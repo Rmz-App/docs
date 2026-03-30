@@ -1,0 +1,86 @@
+---
+title: Error Handling
+description: Understand error formats and HTTP status codes across RMZ APIs.
+---
+
+# Error Handling
+
+All RMZ APIs use standard HTTP status codes and return structured JSON error responses.
+
+## Merchant API Error Format
+
+Error responses from the Merchant API include an `error: true` field:
+
+```json
+{
+  "message": "Product not found: 999",
+  "data": null,
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999,
+  "error": true
+}
+```
+
+## Storefront API Error Format
+
+The Storefront API uses `success: false`:
+
+```json
+{
+  "success": false,
+  "message": "Error message",
+  "data": null
+}
+```
+
+## License API Error Format
+
+The License API returns an error code string:
+
+```json
+{
+  "success": false,
+  "error": "LICENSE_NOT_FOUND",
+  "message": "License not found"
+}
+```
+
+## HTTP Status Codes
+
+| Code | Meaning | When It Happens |
+|------|---------|-----------------|
+| `200` | Success | Request completed successfully |
+| `201` | Created | Resource created (e.g., new order) |
+| `400` | Bad Request | Validation error or malformed request |
+| `401` | Unauthorized | Missing or invalid authentication |
+| `403` | Forbidden | Authenticated but not authorized |
+| `404` | Not Found | Resource does not exist |
+| `422` | Unprocessable Entity | Validation failed |
+| `429` | Too Many Requests | Rate limit exceeded |
+| `500` | Internal Server Error | Unexpected server error |
+
+## Validation Errors
+
+When request validation fails (400 or 422), the response includes field-level errors:
+
+```json
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "products": ["The products field is required."],
+    "products.0.identifier": ["The products.0.identifier field is required."]
+  }
+}
+```
+
+## Best Practices
+
+<Tip>
+  Always check the HTTP status code first, then parse the response body for details.
+</Tip>
+
+1. **Check status codes** — do not assume every response is successful
+2. **Parse error messages** — they contain actionable information
+3. **Handle validation errors** — iterate the `errors` object to display field-specific messages
+4. **Log errors** — include the timestamp and request details for debugging
+5. **Handle network errors** — timeouts and connection failures are not JSON responses

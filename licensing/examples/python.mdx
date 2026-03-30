@@ -1,0 +1,247 @@
+---
+title: "Python Examples"
+description: "Complete Python examples for license verification, with and without end-to-end encryption."
+---
+
+Full working Python examples for the RMZ license verification API.
+
+All examples are available on GitHub: [github.com/Rmz-App/rmz-license-examples](https://github.com/Rmz-App/rmz-license-examples)
+
+## Dependencies
+
+| Mode | Install |
+|------|---------|
+| Without E2EE | `pip install requests` |
+| With E2EE | `pip install requests cryptography` |
+
+## Plain Verification
+
+<CodeGroup>
+
+```python verify.py
+"""
+RMZ License Verification — Python (without E2EE)
+https://license.rmz.gg
+
+Requirements:
+    pip install requests
+"""
+
+import requests
+import hashlib
+import platform
+import uuid
+
+# =============================================
+# Configuration — change these values
+# =============================================
+PRODUCT_ID = 61200  # Replace with your product ID from the dashboard
+API_URL = "https://license.rmz.gg/verify"
+
+
+def get_hwid():
+    """Generate a unique hardware ID for this machine."""
+    raw = f"{platform.node()}-{platform.machine()}-{uuid.getnode()}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def verify_license(license_key, hwid=None):
+    """
+    Verify a license key with the RMZ API.
+
+    Returns:
+        dict — { "valid": True, "data": {...} } on success
+             — { "valid": False, "error": "...", "message": "..." } on failure
+    """
+    payload = {
+        "product_id": PRODUCT_ID,
+        "license_key": license_key,
+    }
+    if hwid:
+        payload["hwid"] = hwid
+
+    try:
+        resp = requests.post(API_URL, json=payload, timeout=10)
+        body = resp.json()
+
+        if resp.status_code == 200 and body.get("success"):
+            return {"valid": True, "data": body["data"]}
+        else:
+            return {
+                "valid": False,
+                "error": body.get("error", "UNKNOWN"),
+                "message": body.get("message", "Unknown error"),
+            }
+    except requests.RequestException as e:
+        return {"valid": False, "error": "CONNECTION_ERROR", "message": str(e)}
+
+
+# =============================================
+# Example usage
+# =============================================
+if __name__ == "__main__":
+    hwid = get_hwid()
+    print(f"Machine HWID: {hwid}")
+
+    license_key = input("Enter your license key: ").strip()
+    result = verify_license(license_key, hwid=hwid)
+
+    if result["valid"]:
+        info = result["data"]
+        print(f"\n  Status:  {info['status']}")
+        print(f"  Product: {info['product']['name']}")
+        if info.get("plan"):
+            print(f"  Plan:    {info['plan']['duration_label']}")
+            print(f"  Start:   {info['plan']['start_date']}")
+            print(f"  End:     {info['plan']['end_date']}")
+        if info.get("expires_at"):
+            print(f"  Expires: {info['expires_at']} ({info['expires_in_days']} days left)")
+        print(f"  Devices: {info['activations']['current']}/{info['activations']['max'] or 'unlimited'}")
+    else:
+        print(f"\n  Error:   {result['error']}")
+        print(f"  Message: {result['message']}")
+```
+
+</CodeGroup>
+
+## With E2EE
+
+When E2EE is enabled, all responses are AES-256-GCM encrypted. This example uses the `cryptography` library to decrypt them.
+
+<CodeGroup>
+
+```python verify_e2ee.py
+"""
+RMZ License Verification — Python (with E2EE)
+https://license.rmz.gg
+
+All API responses are AES-256-GCM encrypted. This prevents
+man-in-the-middle attacks and local proxy spoofing.
+
+Requirements:
+    pip install requests cryptography
+"""
+
+import requests
+import hashlib
+import platform
+import uuid
+import json
+import base64
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+# =============================================
+# Configuration — change these values
+# =============================================
+PRODUCT_ID = 61200  # Replace with your product ID from the dashboard
+ENCRYPTION_KEY = "0f53ec151f1267d547b73978afe2cea559821b0d3b4c6bf809cc23a7b2003c18"  # Replace with your 64-character hex key from product settings
+API_URL = "https://license.rmz.gg/verify"
+
+
+def get_hwid():
+    """Generate a unique hardware ID for this machine."""
+    raw = f"{platform.node()}-{platform.machine()}-{uuid.getnode()}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def decrypt_response(body, hex_key):
+    """
+    Decrypt an AES-256-GCM encrypted API response.
+
+    Args:
+        body: The JSON response with 'payload', 'nonce', 'tag' fields
+        hex_key: The 64-character hex encryption key from product settings
+
+    Returns:
+        dict — the decrypted JSON data, or None if decryption fails
+    """
+    try:
+        key = bytes.fromhex(hex_key)
+        nonce = base64.b64decode(body["nonce"])
+        tag = base64.b64decode(body["tag"])
+        ciphertext = base64.b64decode(body["payload"])
+
+        aesgcm = AESGCM(key)
+        plaintext = aesgcm.decrypt(nonce, ciphertext + tag, None)
+        return json.loads(plaintext)
+    except Exception:
+        return None
+
+
+def verify_license(license_key, hwid=None):
+    """
+    Verify a license key with the RMZ API (E2EE mode).
+    Both success and error responses are encrypted.
+
+    Returns:
+        dict — { "valid": True, "data": {...} } on success
+             — { "valid": False, "error": "...", "message": "..." } on failure
+    """
+    payload = {
+        "product_id": PRODUCT_ID,
+        "license_key": license_key,
+    }
+    if hwid:
+        payload["hwid"] = hwid
+
+    try:
+        resp = requests.post(API_URL, json=payload, timeout=10)
+        body = resp.json()
+
+        # All responses are encrypted when E2EE is enabled
+        if body.get("encrypted"):
+            body = decrypt_response(body, ENCRYPTION_KEY)
+            if body is None:
+                return {"valid": False, "error": "DECRYPTION_FAILED", "message": "Wrong encryption key"}
+
+        if body.get("success"):
+            return {"valid": True, "data": body["data"]}
+        else:
+            return {
+                "valid": False,
+                "error": body.get("error", "UNKNOWN"),
+                "message": body.get("message", "Unknown error"),
+            }
+    except requests.RequestException as e:
+        return {"valid": False, "error": "CONNECTION_ERROR", "message": str(e)}
+
+
+# =============================================
+# Example usage
+# =============================================
+if __name__ == "__main__":
+    hwid = get_hwid()
+    print(f"Machine HWID: {hwid}")
+
+    license_key = input("Enter your license key: ").strip()
+    result = verify_license(license_key, hwid=hwid)
+
+    if result["valid"]:
+        info = result["data"]
+        print(f"\n  Status:  {info['status']}")
+        print(f"  Product: {info['product']['name']}")
+        if info.get("plan"):
+            print(f"  Plan:    {info['plan']['duration_label']}")
+            print(f"  Start:   {info['plan']['start_date']}")
+            print(f"  End:     {info['plan']['end_date']}")
+        if info.get("expires_at"):
+            print(f"  Expires: {info['expires_at']} ({info['expires_in_days']} days left)")
+        print(f"  Devices: {info['activations']['current']}/{info['activations']['max'] or 'unlimited'}")
+    else:
+        print(f"\n  Error:   {result['error']}")
+        print(f"  Message: {result['message']}")
+```
+
+</CodeGroup>
+
+## Key Functions
+
+| Function | Description |
+|----------|-------------|
+| `get_hwid()` | Generates a SHA-256 hash from hostname, machine architecture, and MAC address |
+| `verify_license(key, hwid)` | Sends a POST request to the API and returns `{ "valid", "data" }` or `{ "valid", "error", "message" }` |
+| `decrypt_response(body, hex_key)` | (E2EE only) Decrypts AES-256-GCM response using the `cryptography` library |
+
+<Note>
+  The `AESGCM` class from `cryptography` expects the ciphertext and tag concatenated together. That is why the decryption call passes `ciphertext + tag` as a single value.
+</Note>

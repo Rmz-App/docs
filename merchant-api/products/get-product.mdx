@@ -1,0 +1,200 @@
+---
+title: Get Product
+description: Retrieve detailed information for a specific product.
+---
+
+# Get Product
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono font-bold">GET</span>
+  <code>/products/{"{id}"}</code>
+</div>
+
+Returns full details for a single product, including images, digital codes, subscription variants, and categories.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | The product ID |
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/products/101" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/products/101", {
+  headers: { "Authorization": "Bearer YOUR_API_TOKEN" }
+});
+const product = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://merchant-api.rmz.gg/shawarma/products/101",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"}
+)
+product = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/products/101");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Success Response
+
+```json
+{
+  "message": null,
+  "data": {
+    "id": 101,
+    "store_id": 1,
+    "name": "Premium License",
+    "slug": "premium-license",
+    "type": "code",
+    "price": 49.99,
+    "discount_price": null,
+    "discount_expiry": null,
+    "description": "Premium software license key...",
+    "status": 1,
+    "min_qty": 1,
+    "max_purchase_count": null,
+    "purchase_count": 15,
+    "fields": [],
+    "is_noticeable": false,
+    "license_config": null,
+    "metadata": null,
+    "deleted_at": null,
+    "created_at": "2024-01-01T00:00:00.000000Z",
+    "updated_at": "2024-01-15T00:00:00.000000Z",
+    "actual_price": 49.99,
+    "current_stock": 25,
+    "is_new": false,
+    "is_discounted": false,
+    "is_discount_expired": false,
+    "show_discount_countdown": false,
+    "show_discount_savings": false,
+    "discount_savings_amount": 0,
+    "codes": [
+      {
+        "id": 301,
+        "code": "XXXX-XXXX-XXXX",
+        "order_product_id": null,
+        "product_id": 101,
+        "store_id": 1,
+        "deleted_at": null,
+        "created_at": "2024-01-01T00:00:00.000000Z",
+        "updated_at": "2024-01-01T00:00:00.000000Z"
+      }
+    ],
+    "image": {
+      "id": 201,
+      "model_type": "App\\Models\\StoreProduct",
+      "model_id": 101,
+      "type": "main_product_image",
+      "file_name": "product-image.png",
+      "path": "products/images",
+      "metadata": null,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00.000000Z",
+      "updated_at": "2024-01-01T00:00:00.000000Z",
+      "full_link": "https://cdn.rmz.gg/products/images/product-image.png"
+    },
+    "subscription_variants": [],
+    "categories": [
+      {
+        "id": 1,
+        "slug": "software",
+        "title": "Software",
+        "description": null,
+        "metadata": null,
+        "is_active": true,
+        "parent_id": null,
+        "store_id": 1,
+        "deleted_at": null,
+        "created_at": "2024-01-01T00:00:00.000000Z",
+        "updated_at": "2024-01-01T00:00:00.000000Z",
+        "sort_index": 1,
+        "pivot": {
+          "product_id": 101,
+          "category_id": 1
+        }
+      }
+    ]
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Product ID |
+| `store_id` | integer | Store ID |
+| `name` | string | Product name |
+| `slug` | string | URL-friendly identifier |
+| `type` | string | Product type: `product`, `code`, `service`, `subscription`, `course`, `license` |
+| `price` | float | Display price |
+| `discount_price` | float/null | Discounted price if a discount is active |
+| `discount_expiry` | string/null | Discount expiry date |
+| `description` | string | Product description |
+| `status` | integer | Product status (1 = active, 3 = disabled) |
+| `min_qty` | integer | Minimum order quantity |
+| `max_purchase_count` | integer/null | Maximum total purchases allowed (`null` = unlimited) |
+| `purchase_count` | integer | Current total purchase count |
+| `fields` | array | Custom fields/options configured for the product |
+| `is_noticeable` | boolean | Whether the product accepts customer notes |
+| `license_config` | object/null | License configuration (for `license` type products) |
+| `metadata` | object/null | Product metadata including display settings |
+| `actual_price` | float | Computed selling price (discount price if active, otherwise regular price) |
+| `current_stock` | integer | Current available stock |
+| `is_new` | boolean | Whether the product was created in the last 12 hours |
+| `is_discounted` | boolean | Whether an active discount is currently applied |
+| `is_discount_expired` | boolean | Whether the discount has expired |
+| `show_discount_countdown` | boolean | Whether to show a discount countdown timer |
+| `show_discount_savings` | boolean | Whether to show discount savings amount |
+| `discount_savings_amount` | float | Amount saved with discount (0 if no active discount) |
+| `image` | object/null | Product image with `full_link` containing the full CDN URL |
+| `image.full_link` | string | Full CDN URL for the image |
+| `codes` | array | Available (unsold) digital codes (for `code` type products). Only codes where `order_product_id` is `null` are returned. |
+| `subscription_variants` | array | Subscription plans (for `subscription` type products). Each variant includes a `durationText` field with the Arabic duration label. |
+| `subscription_variants[].durationText` | string | Arabic label for the duration (e.g., "شهر", "سنه") |
+| `categories` | array | Assigned categories with pivot data |
+
+<Note>
+  The `codes` array only includes unsold codes (where `order_product_id` is null). For security, ensure you do not expose this data to end users in client-side applications.
+</Note>
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `404` | Product not found |

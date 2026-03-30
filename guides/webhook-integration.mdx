@@ -1,0 +1,354 @@
+---
+title: "Webhook Integration"
+description: "Set up and consume RMZ webhooks to react to store events in real time."
+---
+
+This guide walks through the complete process of setting up an RMZ webhook, building a receiver endpoint, verifying signatures, and handling common scenarios.
+
+## Prerequisites
+
+- An RMZ store with an **RMZ+** subscription plan
+- A publicly accessible HTTPS endpoint to receive webhooks
+- Basic knowledge of your server framework (Express, Flask, Laravel, etc.)
+
+---
+
+## Step 1: Create a Webhook in the Dashboard
+
+<Steps>
+
+<Step title="Navigate to webhook settings">
+  Go to **Dashboard > Settings > Webhooks**.
+</Step>
+
+<Step title="Add a new webhook">
+  Click **Add Webhook** and fill in the configuration:
+
+  | Field | Example Value |
+  |-------|---------------|
+  | Name | Order Notifications |
+  | Event | `order.created` |
+  | URL | `https://api.yourdomain.com/webhooks/rmz` |
+  | Tries | 3 |
+</Step>
+
+<Step title="Save and note your secret key">
+  After saving, the webhook's **secret key** (28 characters) is shown. Copy and store it securely — you will need it to verify signatures.
+</Step>
+
+<Step title="Enable the webhook">
+  Toggle the webhook to **Enabled** when you are ready to receive events.
+</Step>
+
+</Steps>
+
+---
+
+## Step 2: Build Your Receiver Endpoint
+
+Your endpoint must accept HTTP POST requests, verify the signature, process the payload, and return a `200` status quickly.
+
+<CodeGroup>
+
+```javascript Node.js (Express)
+const express = require("express");
+const crypto = require("crypto");
+
+const app = express();
+
+// IMPORTANT: Use raw body for signature verification
+app.post(
+  "/webhooks/rmz",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["signature"];
+    const requestId = req.headers["x-rmz-request-id"];
+    const rawBody = req.body.toString();
+
+    // 1. Verify signature
+    const expectedSig = crypto
+      .createHmac("sha256", process.env.RMZ_WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest("hex");
+
+    if (!crypto.timingSafeEqual(
+      Buffer.from(signature || ""),
+      Buffer.from(expectedSig)
+    )) {
+      console.error("Invalid webhook signature");
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    // 2. Parse payload
+    const payload = JSON.parse(rawBody);
+    console.log(`Received ${payload.event} (request: ${requestId})`);
+
+    // 3. Respond immediately
+    res.status(200).json({ received: true });
+
+    // 4. Process asynchronously
+    processWebhook(payload, requestId);
+  }
+);
+
+async function processWebhook(payload, requestId) {
+  switch (payload.event) {
+    case "order.created":
+      const order = payload.data;
+      console.log(`New order #${order.id} from ${order.customer.firstName}`);
+      console.log(`Amount: ${order.total}, Method: ${order.transaction.payment_method}`);
+      // Your business logic here...
+      break;
+
+    case "order.status.changed":
+      const updated = payload.data;
+      const currentStatus = updated.status.status;
+      console.log(`Order #${updated.id} status changed to ${currentStatus}`);
+      break;
+  }
+}
+
+app.listen(3000);
+```
+
+```python Python (Flask)
+import hmac
+import hashlib
+import json
+from flask import Flask, request, jsonify
+from threading import Thread
+
+app = Flask(__name__)
+WEBHOOK_SECRET = "your_28_char_secret_key"
+
+@app.route("/webhooks/rmz", methods=["POST"])
+def handle_webhook():
+    # 1. Verify signature
+    signature = request.headers.get("Signature", "")
+    raw_body = request.data
+
+    expected = hmac.new(
+        WEBHOOK_SECRET.encode(),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(signature, expected):
+        return jsonify({"error": "Invalid signature"}), 401
+
+    # 2. Parse payload
+    payload = json.loads(raw_body)
+    request_id = request.headers.get("X-RMZ-REQUEST-ID")
+
+    # 3. Respond immediately
+    # Process in background thread
+    Thread(target=process_webhook, args=(payload, request_id)).start()
+
+    return jsonify({"received": True}), 200
+
+def process_webhook(payload, request_id):
+    event = payload["event"]
+    data = payload["data"]
+
+    if event == "order.created":
+        print(f"New order #{data['id']} - {data['total']} SAR")
+        customer = data["customer"]
+        print(f"Customer: {customer['firstName']} {customer['lastName']}")
+        # Your business logic here...
+
+    elif event == "order.status.changed":
+        print(f"Order #{data['id']} status: {data['status']['status']}")
+
+if __name__ == "__main__":
+    app.run(port=3000)
+```
+
+```php PHP (Laravel)
+<?php
+
+// routes/api.php
+Route::post('/webhooks/rmz', [WebhookController::class, 'handle']);
+
+// app/Http/Controllers/WebhookController.php
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class WebhookController extends Controller
+{
+    public function handle(Request $request)
+    {
+        // 1. Verify signature
+        $signature = $request->header('Signature');
+        $rawBody = $request->getContent();
+        $secret = config('services.rmz.webhook_secret');
+
+        $expected = hash_hmac('sha256', $rawBody, $secret);
+
+        if (!hash_equals($expected, $signature ?? '')) {
+            Log::warning('Invalid webhook signature');
+            return response()->json(['error' => 'Invalid signature'], 401);
+        }
+
+        // 2. Parse payload
+        $payload = json_decode($rawBody, true);
+        $requestId = $request->header('X-RMZ-REQUEST-ID');
+
+        Log::info("Webhook received: {$payload['event']} (request: {$requestId})");
+
+        // 3. Dispatch to background job and respond immediately
+        dispatch(function () use ($payload) {
+            $this->processWebhook($payload);
+        });
+
+        return response()->json(['received' => true], 200);
+    }
+
+    private function processWebhook(array $payload): void
+    {
+        $event = $payload['event'];
+        $data = $payload['data'];
+
+        match ($event) {
+            'order.created' => $this->handleOrderCreated($data),
+            'order.status.changed' => $this->handleOrderStatusChanged($data),
+            default => Log::warning("Unknown webhook event: {$event}"),
+        };
+    }
+
+    private function handleOrderCreated(array $order): void
+    {
+        Log::info("New order #{$order['id']} - {$order['total']}");
+        // Your business logic...
+    }
+
+    private function handleOrderStatusChanged(array $order): void
+    {
+        $status = $order['status']['status'];
+        Log::info("Order #{$order['id']} status changed to {$status}");
+        // Your business logic...
+    }
+}
+```
+
+</CodeGroup>
+
+<Warning>
+  If you are using Laravel, make sure to exclude the webhook route from CSRF verification by adding it to the `$except` array in `App\Http\Middleware\VerifyCsrfToken`.
+</Warning>
+
+---
+
+## Step 3: Handle Retries and Idempotency
+
+Webhooks may be delivered more than once. Use the `X-RMZ-REQUEST-ID` header to detect and ignore duplicates:
+
+```javascript
+// In-memory for demo — use Redis or a database in production
+const processedIds = new Set();
+
+function isProcessed(requestId) {
+  if (processedIds.has(requestId)) {
+    return true;
+  }
+  processedIds.add(requestId);
+  return false;
+}
+
+// In your webhook handler:
+if (isProcessed(requestId)) {
+  console.log(`Duplicate webhook ${requestId}, skipping`);
+  return res.status(200).json({ received: true });
+}
+```
+
+<Tip>
+  Store processed request IDs in Redis with a 7-day TTL for automatic cleanup. In a database, use a unique constraint on the request ID column and catch the duplicate key error.
+</Tip>
+
+---
+
+## Step 4: Test Your Webhook
+
+Before enabling the webhook for production:
+
+1. **Use a tunneling tool** like ngrok to expose your local server:
+   ```bash
+   ngrok http 3000
+   ```
+   Use the generated HTTPS URL as your webhook URL.
+
+2. **Place a test order** in your store to trigger the `order.created` event.
+
+3. **Check the webhook logs** in your dashboard to see the delivery status and response from your server.
+
+4. **Verify the payload** matches the expected format documented in [Payload Format](/webhooks/payload-format).
+
+---
+
+## Common Patterns
+
+### Sending Slack Notifications
+
+```javascript
+async function notifySlack(order) {
+  await fetch(process.env.SLACK_WEBHOOK_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: `New order #${order.id}`,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*New Order #${order.id}*\n` +
+              `Customer: ${order.customer.firstName} ${order.customer.lastName}\n` +
+              `Amount: ${order.total} SAR\n` +
+              `Payment: ${order.transaction.payment_method}`
+          }
+        }
+      ]
+    })
+  });
+}
+```
+
+### Syncing to a Database
+
+```javascript
+async function syncOrder(order) {
+  await db.query(
+    `INSERT INTO orders (rmz_order_id, customer_email, amount, status, created_at)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (rmz_order_id) DO UPDATE SET status = $4`,
+    [order.id, order.customer.email, order.total, order.status.status, order.created_at]
+  );
+}
+```
+
+---
+
+## Troubleshooting
+
+<Accordion title="Webhook not being delivered">
+  - Verify the webhook is **enabled** in the dashboard
+  - Check that your URL is publicly accessible (not `localhost`)
+  - Ensure your endpoint accepts POST requests and returns a 2xx status
+  - Check the webhook logs in the dashboard for error details
+</Accordion>
+
+<Accordion title="Signature verification failing">
+  - Use the **raw request body** for verification, not the parsed JSON
+  - Ensure you are using the correct secret key for this specific webhook
+  - Check for middleware that modifies the request body before your handler
+</Accordion>
+
+<Accordion title="Receiving duplicate events">
+  - This is expected behavior during retries. Implement idempotency using the `X-RMZ-REQUEST-ID` header.
+</Accordion>
+
+<Accordion title="Events arriving out of order">
+  - Use the `created_at` timestamp in the `statuses` array to determine the correct chronological order.
+</Accordion>

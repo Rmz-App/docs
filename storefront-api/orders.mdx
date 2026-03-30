@@ -1,0 +1,641 @@
+---
+title: "Orders & Subscriptions"
+description: "View customer orders, order details, VAT invoices, subscriptions, and submit order reviews."
+---
+
+All order endpoints require customer authentication.
+
+---
+
+## GET /customer/orders
+
+List the authenticated customer's orders, sorted by newest first.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| per_page | integer | No | Orders per page (1-50). Default: `12` |
+| page | integer | No | Page number |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/customer/orders?per_page=10&page=1" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/customer/orders?per_page=10", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/customer/orders",
+    headers={"Authorization": "Bearer 1|abc123xyz..."},
+    params={"per_page": 10}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->get("https://front.rmz.gg/api/customer/orders", [
+    "per_page" => 10
+]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 78901,
+      "order_number": 78901,
+      "status": {
+        "id": 1,
+        "status": 4,
+        "name": "Completed",
+        "color": "success",
+        "human_format": {
+          "text": "Completed",
+          "color": "success",
+          "date_human": "2 hours ago",
+          "date_normal": "2024-06-15 14:30:00"
+        }
+      },
+      "total": {
+        "amount": 399.98,
+        "formatted": "399.98 ر.س",
+        "currency": "SAR"
+      },
+      "financial_breakdown": {
+        "subtotal": 399.98,
+        "discount_amount": 0,
+        "final_total": 399.98
+      },
+      "items": [
+        {
+          "id": 1001,
+          "product_name": "Premium Game Key",
+          "name": "Premium Game Key",
+          "product_id": 101,
+          "quantity": 2,
+          "price": 199.99,
+          "total": 399.98,
+          "formatted_price": "199.99 ر.س",
+          "formatted_total": "399.98 ر.س",
+          "fields": null,
+          "notes": null,
+          "item_type": "App\\Models\\StoreProduct",
+          "item_id": 101,
+          "product": {
+            "id": 101,
+            "name": "Premium Game Key",
+            "type": "code",
+            "description": "...",
+            "full_link": null,
+            "activation_info": "Enter this code on the platform",
+            "image": {
+              "url": "https://cdn.rmz.gg/...",
+              "full_link": "https://cdn.rmz.gg/...",
+              "alt": "Premium Game Key"
+            }
+          },
+          "item": {
+            "id": 101,
+            "name": "Premium Game Key",
+            "type": "code",
+            "description": "...",
+            "full_link": null,
+            "activation_info": "Enter this code on the platform",
+            "image": {
+              "url": "https://cdn.rmz.gg/...",
+              "full_link": "https://cdn.rmz.gg/...",
+              "alt": "Premium Game Key"
+            },
+            "product": {
+              "full_link": null
+            }
+          },
+          "codes": [],
+          "licenses": []
+        }
+      ],
+      "customer": {
+        "id": 123,
+        "name": "Ahmed Ali",
+        "email": "ahmed@example.com",
+        "phone": "501234567"
+      },
+      "payment": {
+        "method": "card",
+        "status": null,
+        "transaction_id": "ch_abc123"
+      },
+      "discount_amount": 0,
+      "customer_note": null,
+      "meta": null,
+      "eligibility": {
+        "can_review": true,
+        "can_complain": true,
+        "can_refund": false
+      },
+      "human_format": {
+        "created_at_human": "2 hours ago",
+        "created_at_normal": "2024-06-15 14:30:00",
+        "total_formatted": "399.98 ر.س"
+      },
+      "created_at": "2024-06-15T14:30:00.000000Z",
+      "updated_at": "2024-06-15T14:30:00.000000Z"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 3,
+    "per_page": 10,
+    "total": 25,
+    "from": 1,
+    "to": 10,
+    "has_more_pages": true,
+    "next_page_url": "...",
+    "prev_page_url": null
+  }
+}
+```
+
+---
+
+## GET /customer/orders/{id}
+
+Get detailed information for a specific order, including items, codes, licenses, subscriptions, course enrollments, transaction details, and review status.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Order ID |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/customer/orders/78901" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/customer/orders/78901", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/customer/orders/78901", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->get("https://front.rmz.gg/api/customer/orders/78901");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 78901,
+    "order_number": 78901,
+    "status": {
+      "id": 1,
+      "status": 4,
+      "name": "Completed",
+      "color": "success",
+      "human_format": {
+        "text": "Completed",
+        "color": "success",
+        "date_human": "2 hours ago",
+        "date_normal": "2024-06-15 14:30:00"
+      }
+    },
+    "statuses": [
+      {
+        "id": 1,
+        "status": 1,
+        "name": "Received",
+        "color": "info",
+        "created_at": "2024-06-15T14:30:00.000000Z",
+        "human_format": {
+          "text": "Received",
+          "color": "info",
+          "date_human": "2 hours ago",
+          "date_normal": "2024-06-15 14:30:00"
+        }
+      }
+    ],
+    "total": {
+      "amount": 399.98,
+      "formatted": "399.98 ر.س",
+      "currency": "SAR"
+    },
+    "financial_breakdown": {
+      "subtotal": 399.98,
+      "discount_amount": 0,
+      "final_total": 399.98
+    },
+    "items": [
+      {
+        "id": 1001,
+        "product_name": "Premium Game Key",
+        "name": "Premium Game Key",
+        "product_id": 101,
+        "quantity": 2,
+        "price": 199.99,
+        "total": 399.98,
+        "formatted_price": "199.99 ر.س",
+        "formatted_total": "399.98 ر.س",
+        "fields": { "platform": "PC" },
+        "notes": null,
+        "item_type": "App\\Models\\StoreProduct",
+        "item_id": 101,
+        "product": {
+          "id": 101,
+          "name": "Premium Game Key",
+          "type": "code",
+          "description": "...",
+          "full_link": null,
+          "activation_info": "Enter this code on the platform",
+          "image": {
+            "url": "https://cdn.rmz.gg/...",
+            "full_link": "https://cdn.rmz.gg/...",
+            "alt": "Premium Game Key"
+          }
+        },
+        "item": {
+          "id": 101,
+          "name": "Premium Game Key",
+          "type": "code",
+          "description": "...",
+          "full_link": null,
+          "activation_info": "Enter this code on the platform",
+          "image": {
+            "url": "https://cdn.rmz.gg/...",
+            "full_link": "https://cdn.rmz.gg/...",
+            "alt": "Premium Game Key"
+          },
+          "product": {
+            "full_link": null
+          }
+        },
+        "codes": [
+          {
+            "id": 1,
+            "code": "XXXX-YYYY-ZZZZ",
+            "used_at": null,
+            "is_used": false
+          }
+        ],
+        "licenses": [],
+        "subscription": null,
+        "course_enrollment": null
+      }
+    ],
+    "customer": {
+      "id": 123,
+      "name": "Ahmed Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567"
+    },
+    "transaction": {
+      "payment_method": "card",
+      "id": 1,
+      "payment_id": "ch_abc123",
+      "total": 399.98,
+      "is_refunded": false,
+      "human_format": {
+        "payment_method": "card",
+        "is_refunded": "No",
+        "total_formatted": "399.98 ر.س"
+      },
+      "receipt": null
+    },
+    "payment": {
+      "method": "card",
+      "status": null,
+      "transaction_id": "ch_abc123"
+    },
+    "coupon": null,
+    "discount_amount": 0,
+    "customer_note": null,
+    "meta": null,
+    "review": null,
+    "complain": null,
+    "eligibility": {
+      "can_review": true,
+      "can_complain": true,
+      "can_refund": false
+    },
+    "human_format": {
+      "created_at_human": "2 hours ago",
+      "created_at_normal": "2024-06-15 14:30:00",
+      "total_formatted": "399.98 ر.س"
+    },
+    "created_at": "2024-06-15T14:30:00.000000Z",
+    "updated_at": "2024-06-15T14:30:00.000000Z"
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 401 | Not authenticated |
+| 404 | Order not found or belongs to another customer |
+
+---
+
+## GET /customer/orders/{id}/vat-invoice
+
+Download the VAT invoice PDF for an order.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Order ID |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/customer/orders/78901/vat-invoice" \
+  -H "Authorization: Bearer 1|abc123xyz..." \
+  --output invoice.pdf
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/customer/orders/78901/vat-invoice", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const blob = await response.blob();
+// Download or display the PDF
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/customer/orders/78901/vat-invoice", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+with open("invoice.pdf", "wb") as f:
+    f.write(response.content)
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")
+    ->get("https://front.rmz.gg/api/customer/orders/78901/vat-invoice");
+file_put_contents("invoice.pdf", $response->body());
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+Returns a PDF file with `Content-Type: application/pdf` and `Content-Disposition: attachment`.
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Order does not include VAT |
+| 401 | Not authenticated |
+| 404 | Order not found |
+
+---
+
+## POST /orders/{id}/review
+
+Submit a review for a completed order, including individual item ratings.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Order ID |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| rating | integer | Yes | Overall order rating (1-5) |
+| comment | string | Yes | Overall review comment (3-255 chars) |
+| item_ratings | object | Yes | Item ratings as `{item_id: rating}` pairs (1-5 each) |
+| item_comments | object | Yes | Item comments as `{item_id: comment}` pairs (3-255 chars each) |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/orders/78901/review" \
+  -H "Authorization: Bearer 1|abc123xyz..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 5,
+    "comment": "Great order, fast delivery!",
+    "item_ratings": {
+      "1001": 5,
+      "1002": 4
+    },
+    "item_comments": {
+      "1001": "Excellent product quality",
+      "1002": "Good but could be better"
+    }
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/orders/78901/review", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer 1|abc123xyz...",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    rating: 5,
+    comment: "Great order, fast delivery!",
+    item_ratings: { "1001": 5, "1002": 4 },
+    item_comments: { "1001": "Excellent product quality", "1002": "Good but could be better" }
+  })
+});
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/orders/78901/review",
+    headers={"Authorization": "Bearer 1|abc123xyz..."},
+    json={
+        "rating": 5,
+        "comment": "Great order, fast delivery!",
+        "item_ratings": {"1001": 5, "1002": 4},
+        "item_comments": {"1001": "Excellent product quality", "1002": "Good but could be better"}
+    }
+)
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->post("https://front.rmz.gg/api/orders/78901/review", [
+    "rating" => 5,
+    "comment" => "Great order, fast delivery!",
+    "item_ratings" => ["1001" => 5, "1002" => 4],
+    "item_comments" => ["1001" => "Excellent product quality", "1002" => "Good but could be better"]
+]);
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "تم ارسال التعليق بنجاح"
+}
+```
+
+<Note>
+Reviews may be auto-published or require store owner approval depending on the store's `auto_accept_reviews` setting.
+</Note>
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Order not in completed status (status 3 or 4 required) |
+| 401 | Not authenticated |
+| 404 | Order not found |
+| 409 | Order already has a review |
+| 422 | Validation error |
+
+---
+
+## GET /customer/subscriptions
+
+List the authenticated customer's active subscriptions.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/customer/subscriptions" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/customer/subscriptions", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/customer/subscriptions", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->get("https://front.rmz.gg/api/customer/subscriptions");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "status": "active",
+      "starts_at": "2024-06-15T00:00:00.000000Z",
+      "ends_at": "2024-07-15T00:00:00.000000Z",
+      "start_date": "2024-06-15T00:00:00.000000Z",
+      "end_date": "2024-07-15T00:00:00.000000Z",
+      "duration": "monthly",
+      "order_id": 78901,
+      "auto_renew": false,
+      "price": {
+        "amount": 49.99,
+        "formatted": "49.99 ر.س",
+        "currency": "SAR"
+      },
+      "product": {
+        "id": 50,
+        "name": "Premium Membership",
+        "slug": "premium-membership",
+        "type": "subscription"
+      },
+      "variant": null,
+      "features": null,
+      "is_active": true,
+      "is_expired": false,
+      "days_remaining": 30,
+      "created_at": "2024-06-15T00:00:00.000000Z",
+      "updated_at": "2024-06-15T00:00:00.000000Z"
+    }
+  ]
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 401 | Not authenticated |

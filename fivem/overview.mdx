@@ -1,0 +1,70 @@
+---
+title: "FiveM Integration Overview"
+description: "Automatically execute server commands when customers purchase products from your RMZ store. Deliver VIP, cash, vehicles, and more to players instantly."
+---
+
+The RMZ FiveM integration is a server resource that connects your FiveM game server to your RMZ store. When a customer buys a product, the configured commands are automatically executed on your server -- delivering items, ranks, currency, or anything else your server supports.
+
+## How It Works
+
+<Steps>
+  <Step title="Customer purchases a product">
+    A customer buys a product from your RMZ store and enters their FiveM ID (Steam ID, license, etc.) at checkout via a custom field.
+  </Step>
+  <Step title="RMZ queues the commands">
+    Based on the FiveM benefit attached to the product, RMZ queues the configured server commands with the customer's details.
+  </Step>
+  <Step title="Resource polls for commands">
+    The `rmz-fivem` resource running on your server polls the RMZ API every few seconds for pending commands.
+  </Step>
+  <Step title="Commands execute on your server">
+    Pending commands are executed via the server console, and the player receives an in-game notification.
+  </Step>
+</Steps>
+
+## Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| **RMZ Plan** | Plus+ subscription or higher |
+| **FiveM Server** | Running a recent build |
+| **Internet Access** | Server must be able to reach `https://fivem.rmz.gg` |
+
+## What You Can Do
+
+- Deliver VIP ranks, in-game currency, vehicles, items, or any custom command
+- Automatically revoke benefits when orders are refunded or cancelled
+- Queue commands for offline players and execute them when they join
+- Monitor connection status from your RMZ dashboard
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Installation Guide" icon="download" href="/fivem/installation">
+    Download, configure, and start the resource
+  </Card>
+  <Card title="Configuration" icon="gear" href="/fivem/configuration">
+    All config.lua settings explained
+  </Card>
+  <Card title="Product Setup" icon="box" href="/fivem/product-setup">
+    Create products with FiveM benefits and commands
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/fivem/troubleshooting">
+    Common errors and debug mode
+  </Card>
+</CardGroup>
+
+GitHub repository: [github.com/Rmz-App/rmz-fivem](https://github.com/Rmz-App/rmz-fivem)
+
+## File Structure
+
+```
+rmz-fivem/
+├── fxmanifest.lua      # Resource manifest
+├── config.lua          # Configuration (secret key, API URL, etc.)
+├── server/
+│   └── main.lua        # Polls API and executes commands
+├── client/
+│   └── main.lua        # In-game player notifications
+└── README.md
+```

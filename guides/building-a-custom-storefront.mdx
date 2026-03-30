@@ -1,0 +1,297 @@
+---
+title: "Building a Custom Storefront"
+description: "End-to-end guide to building a headless storefront using the RMZ Storefront SDK and Next.js."
+---
+
+Build a fully custom storefront for your RMZ store using the Storefront SDK and Next.js. Your store handles products, payments, orders, and customer management — you control the entire frontend experience.
+
+## Prerequisites
+
+- An RMZ store with products and at least one payment method configured
+- API keys from **Dashboard > Settings > API Keys** (public key, and secret key for server-side operations)
+- Node.js 18+ installed
+- Your custom domain configured in the store dashboard
+
+## Quick Start with the Template
+
+The fastest way to get started is to clone the official Next.js template:
+
+<Steps>
+
+<Step title="Clone the template">
+
+```bash
+git clone https://github.com/Dokan-E-Commerce/rmz-storefront-nextjs my-storefront
+cd my-storefront
+```
+
+</Step>
+
+<Step title="Install dependencies">
+
+```bash
+npm install
+```
+
+The template already includes the Storefront SDK as a dependency.
+
+</Step>
+
+<Step title="Configure environment variables">
+
+Create a `.env.local` file in the project root:
+
+```bash
+NEXT_PUBLIC_RMZ_PUBLIC_KEY=pk_your_public_key_here
+RMZ_SECRET_KEY=sk_your_secret_key_here
+NEXT_PUBLIC_API_URL=https://front.rmz.gg/api
+```
+
+<Warning>
+  Never expose your `RMZ_SECRET_KEY` in client-side code. It should only be used in server-side API routes and server components.
+</Warning>
+
+</Step>
+
+<Step title="Start the development server">
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000` to see your storefront.
+
+</Step>
+
+</Steps>
+
+## Starting from Scratch
+
+If you prefer to build from an existing Next.js project:
+
+### 1. Install the SDK
+
+```bash
+npm install rmz-storefront-sdk
+```
+
+### 2. Initialize the SDK
+
+Create a shared SDK instance for your application:
+
+```typescript
+// lib/rmz.ts
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+
+// Client-side SDK (safe for browser)
+export const sdk = createStorefrontSDK({
+  publicKey: process.env.NEXT_PUBLIC_RMZ_PUBLIC_KEY!,
+  environment: 'production'
+});
+
+// Server-side SDK (with HMAC authentication)
+export const serverSDK = createStorefrontSDK({
+  publicKey: process.env.NEXT_PUBLIC_RMZ_PUBLIC_KEY!,
+  secretKey: process.env.RMZ_SECRET_KEY!,
+  environment: 'production'
+});
+```
+
+<Note>
+  The SDK defaults to `https://front.rmz.gg/api` as the API URL. You only need to set `apiUrl` if you are using a custom domain.
+</Note>
+
+### 3. Fetch and Display Products
+
+```tsx
+// app/page.tsx
+import { serverSDK } from '@/lib/rmz';
+
+export default async function Home() {
+  const { data: products } = await serverSDK.products.getAll({ per_page: 12 });
+
+  return (
+    <div className="grid grid-cols-3 gap-6">
+      {products.map((product) => (
+        <div key={product.id} className="border rounded-lg p-4">
+          <img src={product.image} alt={product.name} className="w-full" />
+          <h2 className="text-xl font-bold mt-2">{product.name}</h2>
+          <p className="text-gray-600">{product.actual_price} {product.currency}</p>
+          <a href={`/products/${product.id}`} className="text-blue-600">
+            View Details
+          </a>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### 4. Build the Cart
+
+```tsx
+// components/AddToCart.tsx
+'use client';
+
+import { sdk } from '@/lib/rmz';
+import { useState } from 'react';
+
+export function AddToCart({ productId }: { productId: number }) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleAddToCart() {
+    setLoading(true);
+    try {
+      const cart = await sdk.cart.addItem(productId, 1);
+      // Store cart token for subsequent requests
+      localStorage.setItem('cart_token', cart.cart_token);
+      alert('Added to cart!');
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button onClick={handleAddToCart} disabled={loading}>
+      {loading ? 'Adding...' : 'Add to Cart'}
+    </button>
+  );
+}
+```
+
+### 5. Implement Checkout
+
+```tsx
+// app/checkout/page.tsx
+'use client';
+
+import { sdk } from '@/lib/rmz';
+import { useState } from 'react';
+
+export default function Checkout() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleCheckout(paymentMethod: string) {
+    setLoading(true);
+    try {
+      const checkout = await sdk.checkout.create({
+        payment_method: paymentMethod,
+      });
+
+      if (checkout.redirect_url) {
+        window.location.href = checkout.redirect_url;
+      }
+    } catch (error) {
+      console.error('Checkout failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <h1>Checkout</h1>
+      <button onClick={() => handleCheckout('card')}>Pay with Card</button>
+      <button onClick={() => handleCheckout('mada')}>Pay with Mada</button>
+      <button onClick={() => handleCheckout('applepay')}>Apple Pay</button>
+    </div>
+  );
+}
+```
+
+### 6. Customer Authentication
+
+```tsx
+// app/auth/page.tsx
+'use client';
+
+import { sdk } from '@/lib/rmz';
+import { useState } from 'react';
+
+export default function Auth() {
+  const [step, setStep] = useState<'phone' | 'otp' | 'done'>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+
+  async function startAuth() {
+    await sdk.auth.startOTP({
+      country_code: '966',
+      phone: phone,
+    });
+    setStep('otp');
+  }
+
+  async function verifyOTP() {
+    const result = await sdk.auth.verifyOTP({ code: otp });
+    // Store the Bearer token
+    localStorage.setItem('auth_token', result.token);
+    setStep('done');
+  }
+
+  if (step === 'phone') {
+    return (
+      <div>
+        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone number" />
+        <button onClick={startAuth}>Send OTP</button>
+      </div>
+    );
+  }
+
+  if (step === 'otp') {
+    return (
+      <div>
+        <input value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter code" />
+        <button onClick={verifyOTP}>Verify</button>
+      </div>
+    );
+  }
+
+  return <p>Authenticated!</p>;
+}
+```
+
+## Deploying
+
+### Vercel (Recommended)
+
+```bash
+npm install -g vercel
+vercel
+```
+
+Set your environment variables in the Vercel dashboard under **Settings > Environment Variables**.
+
+### Other Platforms
+
+The storefront is a standard Next.js app and can be deployed to any platform that supports Node.js:
+
+- **Netlify**: Add a `netlify.toml` with the Next.js plugin
+- **AWS Amplify**: Connect your Git repository
+- **Docker**: Use the official Next.js Docker example
+- **Self-hosted**: Run `npm run build && npm start`
+
+## Domain Configuration
+
+After deploying, configure your custom domain:
+
+1. Go to **Dashboard > Settings > Domains**
+2. Add your storefront domain (e.g., `store.yourdomain.com`)
+3. Update your DNS records as instructed
+4. The Storefront API will accept requests from this domain automatically
+
+<Tip>
+  For the best SEO and performance, use server-side rendering (SSR) or static site generation (SSG) for product and category pages. Use client-side rendering only for interactive elements like cart and checkout.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Storefront SDK Docs" href="/storefront-sdk/overview">
+    Full SDK API reference with all available methods.
+  </Card>
+  <Card title="Storefront API" href="/storefront-api/overview">
+    Direct API reference if you prefer raw HTTP requests.
+  </Card>
+</CardGroup>

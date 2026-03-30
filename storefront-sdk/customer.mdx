@@ -1,0 +1,207 @@
+---
+title: "Customer Authentication"
+description: "Handle customer login via OTP, registration, profile management, and logout using sdk.auth."
+---
+
+The `sdk.auth` namespace handles the complete customer authentication lifecycle: phone-based OTP login, registration for new customers, profile retrieval and updates, and logout.
+
+## OTP Authentication Flow
+
+RMZ uses phone-based OTP (one-time password) authentication. The flow has three steps:
+
+1. **Start authentication** — send an OTP to the customer's phone
+2. **Verify OTP** — confirm the code the customer received
+3. **Complete registration** — (new customers only) provide name and email
+
+### Step 1: Start Phone Auth
+
+```typescript
+const { session_token } = await sdk.auth.startPhoneAuth('50505050', '966');
+// Store session_token for the next step
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `phone` | `string` | Phone number (without country code) |
+| `countryCode` | `string` | Country code (e.g., `'966'` for Saudi Arabia) |
+
+**Returns:** `{ session_token: string }`
+
+---
+
+### Step 2: Verify OTP
+
+```typescript
+const result = await sdk.auth.verifyOTP('1337', session_token);
+
+if (result.token) {
+  // Existing customer — authentication complete
+  sdk.setAuthToken(result.token);
+  console.log('Welcome back,', result.customer.firstName);
+} else {
+  // New customer — needs to complete registration
+}
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `otp` | `string` | The OTP code entered by the customer |
+| `sessionToken` | `string` | The `session_token` from step 1 |
+
+**Returns:** `{ token: string; customer: Customer }`
+
+---
+
+### Step 2b: Resend OTP
+
+If the customer did not receive the code:
+
+```typescript
+await sdk.auth.resendOTP(session_token);
+```
+
+---
+
+### Step 3: Complete Registration (New Customers)
+
+For first-time customers, collect their details and complete registration:
+
+```typescript
+const { token, customer } = await sdk.auth.completeRegistration({
+  firstName: 'Ahmed',
+  lastName: 'Ali',
+  email: 'ahmed@example.com',
+  sessionToken: session_token
+});
+
+sdk.setAuthToken(token);
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `firstName` | `string` | Customer's first name |
+| `lastName` | `string` | Customer's last name |
+| `email` | `string` | Customer's email address |
+| `sessionToken` | `string` | The `session_token` from step 1 |
+
+**Returns:** `{ token: string; customer: Customer }`
+
+## Profile Management
+
+### `auth.getProfile()`
+
+Retrieve the authenticated customer's profile.
+
+```typescript
+const profile = await sdk.auth.getProfile();
+console.log(profile.firstName, profile.lastName);
+console.log(profile.email, profile.phone);
+```
+
+**Returns:** `Customer`
+
+```typescript
+interface Customer {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}
+```
+
+---
+
+### `auth.updateProfile(data)`
+
+Update the authenticated customer's profile.
+
+```typescript
+await sdk.auth.updateProfile({
+  firstName: 'Mohammed',
+  email: 'new-email@example.com'
+});
+```
+
+**Parameters:** `Partial<Customer>` — any subset of profile fields.
+
+**Returns:** `Customer`
+
+---
+
+### `auth.logout()`
+
+Log out the customer and invalidate the current token.
+
+```typescript
+await sdk.auth.logout();
+sdk.setAuthToken(null); // Clear the local token
+```
+
+**Returns:** `void`
+
+## Token Management
+
+After authentication, manage the Bearer token on the SDK instance:
+
+```typescript
+// Set token (after login)
+sdk.setAuthToken(token);
+
+// Check current token
+const currentToken = sdk.getAuthToken();
+
+// Clear token (after logout)
+sdk.setAuthToken(null);
+```
+
+<Tip>
+Persist the auth token in `localStorage` or a secure cookie so customers stay logged in across page reloads:
+
+```typescript
+// After login
+localStorage.setItem('rmz_auth_token', token);
+
+// On app init
+const saved = localStorage.getItem('rmz_auth_token');
+if (saved) sdk.setAuthToken(saved);
+```
+</Tip>
+
+## Complete Login Example
+
+```typescript
+async function loginCustomer(phone: string, countryCode: string) {
+  // Step 1: Request OTP
+  const { session_token } = await sdk.auth.startPhoneAuth(phone, countryCode);
+
+  // Step 2: Prompt user for OTP code (UI dependent)
+  const otpCode = await promptUserForOTP();
+
+  // Step 3: Verify
+  const { token, customer } = await sdk.auth.verifyOTP(otpCode, session_token);
+
+  if (token) {
+    sdk.setAuthToken(token);
+    localStorage.setItem('rmz_auth_token', token);
+    return { customer, isNewUser: false };
+  }
+
+  // Step 4: New user — collect details
+  const details = await promptUserForDetails();
+  const result = await sdk.auth.completeRegistration({
+    ...details,
+    sessionToken: session_token,
+  });
+
+  sdk.setAuthToken(result.token);
+  localStorage.setItem('rmz_auth_token', result.token);
+  return { customer: result.customer, isNewUser: true };
+}
+```

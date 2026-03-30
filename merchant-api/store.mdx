@@ -1,0 +1,227 @@
+---
+title: Store
+description: Retrieve store information and statistics.
+---
+
+# Store
+
+Retrieve your store's profile information and aggregate statistics.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+---
+
+## Get Store Information
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono font-bold">GET</span>
+  <code>/store</code>
+</div>
+
+Returns the authenticated store's profile data.
+
+### Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/store" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Accept: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/store", {
+  headers: {
+    "Authorization": "Bearer YOUR_API_TOKEN",
+    "Accept": "application/json"
+  }
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://merchant-api.rmz.gg/shawarma/store",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"}
+)
+data = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/store");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Accept: application/json"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+### Success Response
+
+Returns the full store object with all fields except `is_risky` and `is_restricted` (which are hidden). Below is an abbreviated example — the actual response includes all store fields.
+
+```json
+{
+  "message": null,
+  "data": {
+    "id": 1,
+    "subdomain": "my-store",
+    "name": "My Store",
+    "balance": "0.00",
+    "description": "Store description",
+    "logo": "stores/logo.png",
+    "favicon": null,
+    "theme": 1,
+    "color": "#5400db",
+    "activities": [],
+    "social": {},
+    "settings": {},
+    "is_maintenance": false,
+    "maintenance_message": null,
+    "plan_id": 2,
+    "plan_expires_at": "2025-12-31T00:00:00.000000Z",
+    "is_kyc_verified": true,
+    "is_beta_tester": false,
+    "customization": {},
+    "ratio": "4.500",
+    "ratio_synced_at": null,
+    "ratio_based_on": 50,
+    "user_id": 1,
+    "deleted_at": null,
+    "created_at": "2024-01-01T00:00:00.000000Z",
+    "updated_at": "2024-01-15T00:00:00.000000Z",
+    "human_format": {
+      "expiry_date_human": "منذ 6 أشهر"
+    }
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+<Note>
+  The response includes the complete store model. Additional fields may be present depending on store configuration. The fields `is_risky` and `is_restricted` are always hidden from the response.
+</Note>
+
+### Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+
+---
+
+## Get Store Statistics
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono font-bold">GET</span>
+  <code>/store/statics</code>
+</div>
+
+Returns aggregate statistics for the authenticated store. Results are cached for 3 minutes.
+
+### Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/store/statics" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/store/statics", {
+  headers: { "Authorization": "Bearer YOUR_API_TOKEN" }
+});
+const stats = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://merchant-api.rmz.gg/shawarma/store/statics",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"}
+)
+stats = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/store/statics");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+### Success Response
+
+```json
+{
+  "message": null,
+  "data": {
+    "sales_total": 125750.50,
+    "sales_count": 342,
+    "customers_count": 156,
+    "products_count": 23,
+    "categories_count": 5,
+    "subscribers_count": 45,
+    "pages_count": 3,
+    "coupons_count": 8,
+    "duration": "lifetime"
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sales_total` | float | Total revenue (excluding pending, cancelled, refunded orders) |
+| `sales_count` | integer | Total number of completed orders |
+| `customers_count` | integer | Total registered customers |
+| `products_count` | integer | Total products in store |
+| `categories_count` | integer | Total categories |
+| `subscribers_count` | integer | Total active subscriptions |
+| `pages_count` | integer | Total custom pages |
+| `coupons_count` | integer | Total coupon codes |
+| `duration` | string | Always `"lifetime"` — indicates statistics cover all time |
+
+<Note>
+  Statistics are cached for 3 minutes. Frequent polling will return the same data until the cache expires.
+</Note>
+
+### Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |

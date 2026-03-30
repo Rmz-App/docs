@@ -1,0 +1,98 @@
+---
+title: "Product Setup"
+description: "Create products with FiveM benefits, configure commands with variables, and set up revoke actions."
+---
+
+To deliver items, ranks, or currency to players when they purchase from your store, you need to set up a product with a custom field for the player's FiveM ID and attach a FiveM benefit with the commands to execute.
+
+## Step 1: Add a Custom Field
+
+When creating or editing a product in your RMZ dashboard, add a custom field that asks the customer for their FiveM identifier.
+
+| Field Setting | Example Value |
+|---------------|---------------|
+| Field name | `FiveM ID` or `Steam ID` |
+| Field type | Text input |
+| Required | Yes |
+
+The customer fills this in at checkout. The value is available in your commands as the `{player_id}` variable.
+
+## Step 2: Create a FiveM Benefit
+
+1. In your dashboard, go to **Benefits** > **Create Benefit**
+2. Select type **FiveM Commands**
+3. Select the target server(s) where commands should execute
+4. Enter the commands to run when a purchase is completed
+
+## Command Variables
+
+Use these variables in your commands -- they are replaced automatically with the actual values at execution time:
+
+| Variable | Description | Example Value |
+|----------|-------------|---------------|
+| `{player_id}` | Player identifier from the custom field | `steam:110000xxxxxxxxx` |
+| `{order_id}` | RMZ order ID | `1234` |
+| `{product_id}` | Product ID | `56` |
+| `{product_name}` | Product name | `VIP Package` |
+| `{quantity}` | Purchased quantity | `1` |
+
+## Command Examples
+
+```
+/give_vip {player_id}
+/add_cash {player_id} 5000
+/add_car {player_id} adder
+/set_rank {player_id} vip {quantity}
+```
+
+<Tip>
+  You can add multiple commands per benefit. They execute in order. Each command is run via the server console, so use the same syntax you would type into the server console manually.
+</Tip>
+
+## Revoke Commands (Optional)
+
+Define commands that execute automatically when an order is **refunded** or **cancelled**. This lets you undo the benefits that were given.
+
+```
+/remove_vip {player_id}
+/remove_cash {player_id} 5000
+```
+
+<Note>
+  Revoke commands use the same variables as regular commands. They are executed on the same server(s) configured in the benefit.
+</Note>
+
+## Step 3: Attach the Benefit to Your Product
+
+After creating the FiveM benefit:
+
+1. Go to the product settings
+2. In the **Benefits** section, attach the FiveM benefit you created
+3. Save the product
+
+When a customer purchases this product and the order is completed, the commands will be queued and executed on your FiveM server.
+
+## Full Example
+
+A "VIP Package" product setup:
+
+| Configuration | Value |
+|---------------|-------|
+| **Product name** | VIP Package |
+| **Custom field** | "FiveM ID" (required text field) |
+| **Benefit type** | FiveM Commands |
+| **Target server** | My FiveM Server |
+| **Commands** | `/give_vip {player_id}` and `/add_cash {player_id} 10000` |
+| **Revoke commands** | `/remove_vip {player_id}` and `/remove_cash {player_id} 10000` |
+
+When a customer enters their Steam ID at checkout and completes the purchase, your server runs:
+```
+/give_vip steam:110000xxxxxxxxx
+/add_cash steam:110000xxxxxxxxx 10000
+```
+
+If the order is later refunded:
+```
+/remove_vip steam:110000xxxxxxxxx
+/remove_cash steam:110000xxxxxxxxx 10000
+```

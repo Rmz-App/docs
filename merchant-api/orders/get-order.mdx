@@ -1,0 +1,203 @@
+---
+title: Get Order
+description: Retrieve detailed information for a specific order.
+---
+
+# Get Order
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono font-bold">GET</span>
+  <code>/orders/{"{id}"}</code>
+</div>
+
+Returns full details for a single order, including line items, transaction data, subscription info, and customer details.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | The order ID |
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/orders/78901" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/orders/78901", {
+  headers: { "Authorization": "Bearer YOUR_API_TOKEN" }
+});
+const order = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://merchant-api.rmz.gg/shawarma/orders/78901",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"}
+)
+order = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/orders/78901");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Success Response
+
+```json
+{
+  "message": null,
+  "data": {
+    "id": 78901,
+    "store_id": 1,
+    "customer_id": 123,
+    "coupon_id": null,
+    "total": 299.99,
+    "checkout_id": 55001,
+    "current_status": 4,
+    "seen_at": null,
+    "order_review_notification_sent_at": null,
+    "tax_rate": null,
+    "tax_amount": null,
+    "prices_include_tax": false,
+    "tax_country_code": null,
+    "tax_registration_number": null,
+    "created_at": "2024-01-15T14:30:00.000000Z",
+    "updated_at": "2024-01-15T15:00:00.000000Z",
+    "human_format": {
+      "date_human": "منذ شهرين",
+      "date_normal": "Mon, Jan 15, 2024 2:30 PM"
+    },
+    "transaction": {
+      "payment_method": "dokanpay",
+      "deserved": 280.00,
+      "id": 5001,
+      "store_balance_credited_at": "2024-01-22T00:00:00.000000Z",
+      "platform_fees": 19.99,
+      "payment_data": null,
+      "payment_id": "ch_abc123",
+      "total": 299.99,
+      "is_refunded": false,
+      "is_hold": false,
+      "is_by_platform": false,
+      "order_id": 78901,
+      "human_format": {
+        "payment.method": "البطائق الإئتمانية",
+        "created_at": "15 يناير 2024، 2:30 م",
+        "created_at_text": "منذ شهرين",
+        "store_balance_scheduled_at_text": "منذ شهر",
+        "store_balance_scheduled_at": "22 يناير 2024، 12:00 ص"
+      }
+    },
+    "items": [
+      {
+        "id": 1001,
+        "order_id": 78901,
+        "item_type": "App\\Models\\StoreProduct",
+        "item_id": 101,
+        "quantity": 2,
+        "price": 149.99,
+        "fields": [],
+        "notice": null,
+        "created_at": "2024-01-15T14:30:00.000000Z",
+        "updated_at": "2024-01-15T14:30:00.000000Z",
+        "item": {
+          "id": 101,
+          "name": "Premium Product",
+          "price": 149.99,
+          "type": "product"
+        },
+        "subscription": null
+      }
+    ],
+    "customer": {
+      "id": 123,
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "country_code": "966",
+      "phone": "501234567",
+      "email": "ahmed@example.com"
+    }
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Order ID |
+| `store_id` | integer | Store ID |
+| `customer_id` | integer | Customer ID |
+| `coupon_id` | integer/null | Coupon ID if a coupon was applied |
+| `total` | float | Order total amount |
+| `checkout_id` | integer | Checkout session ID |
+| `current_status` | integer | Order status code (see [Overview](/merchant-api/overview#order-statuses)) |
+| `seen_at` | string/null | When the order was seen by the store owner |
+| `tax_rate` | string/null | Tax rate percentage applied |
+| `tax_amount` | string/null | Tax amount |
+| `prices_include_tax` | boolean | Whether prices include tax |
+| `human_format` | object | Human-readable date information (in Arabic) |
+| `human_format.date_human` | string | Relative date (e.g., "منذ شهرين") |
+| `human_format.date_normal` | string | Formatted date string |
+| `transaction.payment_method` | string | Payment method used (e.g., `dokanpay`, `bank`, `free`) |
+| `transaction.deserved` | float | Amount deserved by merchant after fees |
+| `transaction.is_refunded` | boolean | Whether the order was refunded |
+| `transaction.platform_fees` | float | Platform fees deducted |
+| `transaction.payment_data` | object/null | Bank transfer data (only for `bank` payment method, `null` for other methods) |
+| `transaction.payment_id` | string | Payment provider transaction ID |
+| `transaction.is_hold` | boolean | Whether the transaction is on hold |
+| `transaction.is_by_platform` | boolean | Whether the transaction was processed via the platform |
+| `transaction.store_balance_credited_at` | string/null | When the balance was credited to the store |
+| `transaction.order_id` | integer | The order ID this transaction belongs to |
+| `transaction.human_format` | object | Human-readable transaction info (in Arabic) |
+| `transaction.human_format.payment.method` | string | Arabic translation of the payment method |
+| `transaction.human_format.created_at` | string/null | Formatted creation date |
+| `transaction.human_format.created_at_text` | string/null | Relative creation date |
+| `transaction.human_format.store_balance_scheduled_at` | string/null | Formatted balance schedule date |
+| `transaction.human_format.store_balance_scheduled_at_text` | string/null | Relative balance schedule date |
+| `items` | array | Line items in the order |
+| `items[].id` | integer | Order item ID |
+| `items[].order_id` | integer | Parent order ID |
+| `items[].item_type` | string | Product model class |
+| `items[].item_id` | integer | Product ID |
+| `items[].quantity` | integer | Quantity ordered |
+| `items[].price` | float | Unit price at time of purchase |
+| `items[].fields` | array | Selected product options/fields |
+| `items[].notice` | string/null | Customer note for this item |
+| `items[].item` | object | Product details (id, name, price, type) |
+| `items[].subscription` | object/null | Subscription details if applicable |
+| `customer` | object | Customer information |
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `404` | Order not found |

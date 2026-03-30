@@ -1,0 +1,183 @@
+---
+title: "Authentication"
+description: "How the Storefront SDK authenticates requests using public keys, HMAC-SHA256 signatures, and Bearer tokens."
+---
+
+The SDK uses a layered authentication model. Public endpoints only need a `publicKey`. Authenticated customer endpoints need a Bearer token. Server-side operations use HMAC-SHA256 signatures generated from a `secretKey`.
+
+## Authentication Layers
+
+### 1. Public Key (client-side)
+
+Every request includes an `X-Public-Key` header that identifies the store. This is all you need for public endpoints like product listing, store info, and cart management.
+
+```typescript
+const sdk = createStorefrontSDK({
+  publicKey: 'pk_your_public_key_here',
+  // No secretKey — safe for browser usage
+});
+```
+
+Headers sent automatically:
+
+```
+X-Public-Key: pk_your_public_key_here
+X-Timestamp: 1711814400
+X-Signature-Version: v1
+X-Client-Auth: true
+```
+
+### 2. HMAC-SHA256 Signatures (server-side)
+
+When a `secretKey` is provided, the SDK generates an HMAC-SHA256 signature for every request. This is required for server-side operations and the Management API.
+
+```typescript
+const sdk = createStorefrontSDK({
+  publicKey: 'pk_your_public_key_here',
+  secretKey: 'sk_your_secret_key_here', // enables HMAC
+});
+```
+
+The signature is computed over a payload that includes:
+
+```
+{signatureVersion}\n{timestamp}\n{METHOD}\n{path}\n{bodyHash}
+```
+
+Headers sent automatically:
+
+```
+X-Public-Key: pk_your_public_key_here
+X-Timestamp: 1711814400
+X-Signature-Version: v1
+X-Signature: a1b2c3d4e5f6...
+```
+
+<Note>
+The SDK uses constant-time string comparison when verifying signatures to prevent timing attacks. Timestamps are validated within a 5-minute tolerance window to prevent replay attacks.
+</Note>
+
+### 3. Bearer Token (customer authentication)
+
+After a customer logs in via the OTP flow, you receive a Bearer token. Set it on the SDK instance to unlock authenticated endpoints (orders, wishlist, profile, courses):
+
+```typescript
+// After successful OTP verification
+const { token, customer } = await sdk.auth.verifyOTP(otp, sessionToken);
+
+// Set the token for subsequent requests
+sdk.setAuthToken(token);
+
+// Now authenticated endpoints work
+const orders = await sdk.orders.getAll();
+const profile = await sdk.auth.getProfile();
+```
+
+To log out and clear the token:
+
+```typescript
+await sdk.auth.logout();
+sdk.setAuthToken(null);
+```
+
+### 4. Cart Token (guest sessions)
+
+Unauthenticated visitors get a cart token when they first interact with the cart. The SDK manages this automatically — cart tokens are extracted from API responses and included in subsequent requests via the `X-Cart-Token` header.
+
+```typescript
+// Cart token is handled automatically
+const cart = await sdk.cart.addItem(productId, 1);
+// sdk internally stores the cart_token from the response
+
+// You can also manage it manually
+sdk.setCartToken('cart_abc123');
+const currentToken = sdk.getCartToken();
+```
+
+## Security Best Practices
+
+### Separate client and server configs
+
+```typescript
+// Client-side config (browser-safe)
+const clientSDK = createStorefrontSDK({
+  publicKey: process.env.NEXT_PUBLIC_RMZ_PUBLIC_KEY!,
+  apiUrl: 'https://front.rmz.gg/api',
+});
+
+// Server-side config (Node.js only)
+const serverSDK = createStorefrontSDK({
+  publicKey: process.env.RMZ_PUBLIC_KEY!,
+  secretKey: process.env.RMZ_SECRET_KEY!, // NEVER expose in browser
+  apiUrl: 'https://front.rmz.gg/api',
+});
+```
+
+<Warning>
+The SDK warns in the console if it detects a `secretKey` in a browser environment. This is a security risk — secret keys must only exist on the server.
+</Warning>
+
+### Environment variables
+
+<CodeGroup>
+
+```bash Next.js
+# .env.local
+NEXT_PUBLIC_RMZ_PUBLIC_KEY=pk_your_public_key
+RMZ_PUBLIC_KEY=pk_your_public_key
+RMZ_SECRET_KEY=sk_your_secret_key
+```
+
+```bash Vite
+# .env
+VITE_RMZ_PUBLIC_KEY=pk_your_public_key
+```
+
+```bash Node.js
+# .env
+RMZ_PUBLIC_KEY=pk_your_public_key
+RMZ_SECRET_KEY=sk_your_secret_key
+```
+
+</CodeGroup>
+
+### HTTPS only
+
+Always use HTTPS URLs in production. The SDK does not enforce this, but transmitting keys over HTTP is insecure.
+
+```typescript
+// Correct
+const sdk = createStorefrontSDK({
+  apiUrl: 'https://front.rmz.gg/api',
+  publicKey: 'pk_your_key',
+});
+```
+
+## Data Sanitization
+
+The SDK automatically removes sensitive fields from API responses on the client side. Fields like `password`, `secret`, `api_key`, `private_key`, and `webhook_secret` are stripped. Legitimate tokens such as `session_token`, `access_token`, `cart_token`, and `token` are preserved.
+
+```typescript
+const profile = await sdk.auth.getProfile();
+// Sensitive server fields are never exposed to the client
+```
+
+## Advanced: Direct Security Manager
+
+For custom integrations, you can use the `SecurityManager` and `UniversalHttpClient` directly:
+
+```typescript
+import { SecurityManager } from 'rmz-storefront-sdk';
+
+const security = new SecurityManager({
+  publicKey: 'pk_your_key',
+  secretKey: 'sk_your_key', // server-side only
+  signatureVersion: 'v1',
+  timestampTolerance: 300
+});
+
+// Generate a signature manually
+const signature = await security.generateSignature(
+  timestamp, 'POST', '/checkout', JSON.stringify(body)
+);
+```

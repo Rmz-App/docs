@@ -1,0 +1,181 @@
+---
+title: Authentication
+description: Understand how authentication works across all RMZ APIs.
+---
+
+# Authentication
+
+RMZ uses different authentication methods depending on the API you are calling. This page covers all patterns.
+
+## Merchant API — Bearer Token
+
+The Merchant API uses **Laravel Sanctum** tokens. You generate a token from your dashboard and include it in every request.
+
+```
+Authorization: Bearer YOUR_API_TOKEN
+```
+
+### Getting a Token
+
+1. Go to [Settings > API Keys](https://app.rmz.gg/settings/api) in your dashboard
+2. Click **Generate Token**
+3. Copy and store the token securely
+
+<Warning>
+  Tokens have full read/write access to your store. Never expose them in client-side code, public repositories, or logs.
+</Warning>
+
+### Example Request
+
+```bash
+curl -X GET "https://merchant-api.rmz.gg/shawarma/store" \
+  -H "Authorization: Bearer 1|AbCdEfGhIjKlMnOpQrStUvWxYz" \
+  -H "Accept: application/json"
+```
+
+### Invalid Token Response
+
+```json
+{
+  "message": "Unauthenticated."
+}
+```
+
+---
+
+## Storefront API — OTP Authentication
+
+The Storefront API authenticates **customers** (not merchants) using a phone/email OTP flow. This is a three-step process.
+
+### Step 1: Start Authentication
+
+Send the customer's phone number to begin the OTP flow:
+
+```bash
+curl -X POST "https://front.rmz.gg/api/auth/start" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "country_code": "966",
+    "phone": "501234567"
+  }'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Verification code sent successfully",
+  "data": {
+    "session_token": "auth_abc123xyz"
+  }
+}
+```
+
+### Step 2: Verify OTP
+
+Submit the OTP code the customer received:
+
+```bash
+curl -X POST "https://front.rmz.gg/api/auth/verify" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "auth_abc123xyz",
+    "code": "1234"
+  }'
+```
+
+For **existing customers**, you receive a Bearer token immediately:
+```json
+{
+  "success": true,
+  "data": {
+    "type": "authenticated",
+    "token": "1|abc123xyz...",
+    "cart_token": "cart_xyz789",
+    "customer": {
+      "id": 123,
+      "first_name": "Ahmed",
+      "last_name": "Ali"
+    }
+  }
+}
+```
+
+For **new customers**, registration is required:
+```json
+{
+  "success": true,
+  "data": {
+    "type": "new",
+    "requires_registration": true,
+    "session_token": "auth_abc123xyz"
+  }
+}
+```
+
+### Step 3: Complete Registration (New Customers)
+
+```bash
+curl -X POST "https://front.rmz.gg/api/auth/complete" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "auth_abc123xyz",
+    "email": "ahmed@example.com",
+    "firstName": "Ahmed",
+    "lastName": "Ali"
+  }'
+```
+
+### Using the Token
+
+Once authenticated, include the token in subsequent requests:
+
+```bash
+curl -H "Authorization: Bearer 1|abc123xyz..." \
+  https://front.rmz.gg/api/customer/profile
+```
+
+### Guest Cart
+
+Unauthenticated users can still manage a cart using the `X-Cart-Token` header. See [Guest Cart](/storefront-api/authentication/guest-cart) for details.
+
+---
+
+## Embed API — Embed Key
+
+The Embed API uses an `X-Embed-Key` header for authentication. The embed key is tied to a specific product and store.
+
+```
+X-Embed-Key: YOUR_EMBED_KEY
+```
+
+---
+
+## License API — No Auth Header
+
+The License Verification API does not use authentication headers. Instead, the `product_id` in the request body identifies the product, and the `license_key` is the credential being verified.
+
+```bash
+curl -X POST "https://license.rmz.gg/verify" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 123,
+    "license_key": "MYAPP-XXXX-XXXX-XXXX-XXXX",
+    "hwid": "machine-hardware-id"
+  }'
+```
+
+---
+
+## Supported Country Codes
+
+OTP authentication in the Storefront API supports these country codes:
+
+| Code | Country |
+|------|---------|
+| 966 | Saudi Arabia |
+| 973 | Bahrain |
+| 971 | UAE |
+| 974 | Qatar |
+| 968 | Oman |
+| 965 | Kuwait |

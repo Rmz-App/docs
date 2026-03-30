@@ -1,0 +1,165 @@
+---
+title: "Storefront API Overview"
+description: "Build custom storefronts for RMZ stores using the headless Storefront API."
+---
+
+The RMZ Storefront API lets you build fully custom storefronts that connect to any RMZ store. It provides endpoints for browsing products, managing carts, processing checkouts, handling customer authentication, and more.
+
+## Base URL
+
+```
+https://front.rmz.gg/api
+```
+
+The store is identified automatically by the `Origin` or `Referer` header of your request. Your custom storefront domain must be configured in the store's dashboard for requests to be accepted.
+
+## Authentication Model
+
+The Storefront API uses two authentication mechanisms:
+
+### 1. Customer Authentication (Bearer Token)
+
+Customers authenticate via an OTP (one-time password) flow. After verifying their phone number or email, they receive a Bearer token used for authenticated endpoints (orders, profile, wishlist, courses, checkout).
+
+```
+Authorization: Bearer 1|abc123xyz...
+```
+
+### 2. Guest Cart Token
+
+Unauthenticated visitors can still browse products and manage a cart using the `X-Cart-Token` header. A cart token is issued when items are first added to the cart and is also returned upon customer authentication.
+
+```
+X-Cart-Token: cart_abc123
+```
+
+### 3. Management Secret Key
+
+The Management API endpoints use a secret key for server-to-server authentication. This key is configured in the store dashboard.
+
+```
+X-Secret-Key: sk_live_...
+```
+
+### 4. Custom Storefront Token
+
+Store owners can generate custom API tokens for external developers building storefronts. Tokens are scoped by domain, environment, and permissions.
+
+```
+X-Custom-Token: cst_42_abc123...
+```
+
+## Product Types
+
+RMZ stores can sell five types of products:
+
+| Type | Description |
+|------|-------------|
+| `product` | Standard digital product |
+| `code` | Digital codes or keys (game keys, license keys, gift cards) |
+| `service` | Service-based product |
+| `subscription` | Recurring subscription with variants and billing periods |
+| `course` | Online course with modules and progress tracking |
+
+## Response Format
+
+All responses follow a consistent JSON structure.
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "data": { },
+  "message": "Optional success message"
+}
+```
+
+### Paginated Response
+
+```json
+{
+  "success": true,
+  "data": [],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 10,
+    "per_page": 12,
+    "total": 120,
+    "from": 1,
+    "to": 12,
+    "has_more_pages": true,
+    "next_page_url": "https://front.rmz.gg/api/products?page=2",
+    "prev_page_url": null
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "data": { }
+}
+```
+
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| General API | 60 requests per minute |
+| Auth Start | 50 sessions per day per IP |
+| Phone Auth | 10 attempts per day per phone number |
+| OTP Verification | 5 attempts per minute per IP |
+| OTP Resend | 3 resends per 10 minutes |
+| Management API | Lower rate limit (separate throttle group) |
+| Analytics Collection | 120 events per minute per IP (separate from API rate limit) |
+
+When a rate limit is exceeded, you receive a `429 Too Many Requests` response.
+
+## Error Codes
+
+| HTTP Code | Description |
+|-----------|-------------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad Request / Validation Error |
+| 401 | Unauthorized (missing or invalid token) |
+| 403 | Forbidden (access denied) |
+| 404 | Not Found |
+| 409 | Conflict (duplicate resource) |
+| 422 | Validation Error |
+| 429 | Too Many Requests (rate limit exceeded) |
+| 500 | Internal Server Error |
+
+## Supported Country Codes
+
+| Code | Country |
+|------|---------|
+| 966 | Saudi Arabia |
+| 973 | Bahrain |
+| 971 | UAE |
+| 974 | Qatar |
+| 968 | Oman |
+| 965 | Kuwait |
+
+## Caching
+
+Responses include cache headers to help optimize your storefront:
+
+- `X-Cache-Status`: `HIT` or `MISS` indicating whether the response was served from cache
+- `Cache-Control`: `public, max-age=N` with appropriate TTL per resource type
+
+| Resource | Cache TTL |
+|----------|-----------|
+| Store info | ~2 minutes |
+| Categories | ~30 minutes |
+| Products | ~3 minutes |
+| Product details | ~3 minutes |
+| Reviews | ~5 minutes |
+
+## CORS
+
+The API supports cross-origin requests. Your storefront domain must be registered in the store's settings for CORS to allow the request. The `Origin` header is used to identify the store.

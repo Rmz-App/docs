@@ -1,0 +1,80 @@
+---
+title: "Webhook Events"
+description: "All webhook event types available in RMZ and what triggers them."
+---
+
+RMZ currently supports two webhook event types. Each webhook you create listens for a single event type.
+
+## Available Events
+
+| Event | Trigger |
+|-------|---------|
+| `order.created` | A new order is placed in your store (after successful payment or for free orders) |
+| `order.status.changed` | An order's status is updated (e.g., from pending to completed, or completed to cancelled) |
+
+---
+
+## order.created
+
+Fired when a customer successfully places an order. This includes orders from all sources: the storefront, embed checkout, and the Storefront API.
+
+**Common use cases:**
+- Send a custom notification (Slack, Telegram, email)
+- Sync the order to an external system (CRM, ERP, accounting)
+- Trigger a fulfillment workflow
+- Update inventory in an external system
+- Log the sale for analytics
+
+**Payload:** Contains the full order object including customer, items, transaction details, and status history. See [Payload Format](/webhooks/payload-format) for the complete structure.
+
+---
+
+## order.status.changed
+
+Fired when an order's status changes after the initial creation. This event is not triggered for the first status (order creation) — only for subsequent status updates.
+
+**Common use cases:**
+- Notify customers of shipping or delivery updates via your own channels
+- Update external dashboards or reporting tools
+- Trigger post-purchase workflows (e.g., send a review request after completion)
+- Sync order status with third-party fulfillment systems
+
+**Payload:** Contains the same full order object as `order.created`, reflecting the current state of the order after the status change. The `statuses` array includes the complete status history.
+
+### Order Status Values
+
+The `status` field in the payload corresponds to these values:
+
+| Status | Meaning |
+|--------|---------|
+| 1 | Waiting for Payment |
+| 2 | Under Review |
+| 3 | Processing |
+| 4 | Completed |
+| 5 | Cancelled |
+| 6 | Refunded |
+
+<Tip>
+  Use the `statuses` array in the payload to see the full history of status changes for an order, including timestamps for each transition.
+</Tip>
+
+---
+
+## Choosing the Right Event
+
+<CardGroup cols={2}>
+  <Card title="order.created">
+    Use when you need to react to new sales — send notifications, sync to external systems, or trigger fulfillment.
+  </Card>
+  <Card title="order.status.changed">
+    Use when you need to track order lifecycle — notify customers of updates, sync status changes, or trigger post-purchase workflows.
+  </Card>
+</CardGroup>
+
+<Note>
+  You can create multiple webhooks for the same event with different URLs. For example, one webhook sending `order.created` to your CRM and another sending it to a Slack channel.
+</Note>
+
+<Warning>
+  In the current implementation, **all enabled webhooks** receive all events regardless of the configured event type. The `event` field stored on the webhook is included for your reference, but event filtering is not enforced server-side. Your webhook handler should check the `event` field in the payload and ignore events it does not care about.
+</Warning>

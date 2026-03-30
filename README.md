@@ -1,55 +1,61 @@
-# Mintlify Starter Kit
+# RMZ Developer Docs
 
-Use the starter kit to get your docs deployed and ready to customize.
+Developer documentation for the RMZ platform — the leading digital products marketplace for the MENA region.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+Built with [Mintlify](https://mintlify.com). Published at [docs.rmz.gg](https://docs.rmz.gg).
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+## What's Covered
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
-
-## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
-
-```bash
-npx skills add https://mintlify.com/docs
-```
-
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
-
-See the [AI tools guides](/ai-tools) for tool-specific setup.
+- **Merchant API** — manage stores, orders, products, categories, and subscriptions
+- **Storefront API** — build custom storefronts with product browsing, cart, checkout, and OTP auth
+- **Embed API** — embed quick-purchase checkout widgets on external sites
+- **License Verification API** — verify software license keys with HWID/IP lock and E2EE
+- **Webhooks** — receive real-time notifications for order events
+- **Storefront SDK** — TypeScript SDK for the Storefront API
+- **FiveM Integration** — sell and deliver FiveM server products automatically
 
 ## Development
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
+Install the Mintlify CLI:
 
-```
+```bash
 npm i -g mint
 ```
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
+Preview locally:
 
-```
+```bash
 mint dev
 ```
 
-View your local preview at `http://localhost:3000`.
+Open `http://localhost:3000` to view the docs.
 
-## Publishing changes
+## Check for Broken Links
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+```bash
+mint broken-links
+```
 
-## Need help?
+## Publishing
 
-### Troubleshooting
+Changes pushed to the default branch are deployed automatically via the Mintlify GitHub app.
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
+## Project Structure
 
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+```
+docs-repo/
+  docs.json              # Mintlify configuration and navigation
+  index.mdx              # Landing page
+  getting-started/       # Introduction, quickstart, auth, errors
+  merchant-api/          # Merchant API reference
+  storefront-api/        # Storefront API reference
+  embed-api/             # Embed API reference
+  webhooks/              # Webhook documentation
+  licensing/             # License verification docs
+  storefront-sdk/        # Storefront SDK docs
+  fivem/                 # FiveM integration docs
+  guides/                # How-to guides
+  snippets/              # Reusable MDX snippets
+  images/                # Static images
+  logo/                  # Brand logos
+```

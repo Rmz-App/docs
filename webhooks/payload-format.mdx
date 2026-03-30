@@ -1,0 +1,411 @@
+---
+title: "Payload Format"
+description: "Full JSON payload structure for RMZ webhook events."
+---
+
+Every webhook delivery is an HTTP POST request with a JSON body. This page documents the complete payload structure for each event type.
+
+## Request Headers
+
+All webhook requests include these headers:
+
+```
+Content-Type: application/json
+X-RMZ-WEBHOOKS: 1.2
+X-RMZ-REQUEST-ID: 12345
+```
+
+<Note>
+  The `Signature` header is only included when signing is enabled for the webhook. See [Signature Verification](/webhooks/signature-verification) for details.
+</Note>
+
+| Header | Description |
+|--------|-------------|
+| `Content-Type` | Always `application/json` |
+| `X-RMZ-WEBHOOKS` | Webhook API version (currently `1.2`) |
+| `X-RMZ-REQUEST-ID` | Unique integer ID for this delivery attempt. Use for deduplication and support inquiries. |
+| `Signature` | HMAC-SHA256 signature of the payload (**only present** when signing is enabled for the webhook) |
+
+---
+
+## order.created Payload
+
+```json
+{
+  "event": "order.created",
+  "data": {
+    "id": 12345,
+    "store_id": 7,
+    "customer_id": 5678,
+    "coupon_id": null,
+    "total": "149.00",
+    "discount_amount": null,
+    "customer_note": null,
+    "meta": null,
+    "cost": "0.00",
+    "current_status": 4,
+    "tax_rate": "0.00",
+    "tax_amount": "0.00",
+    "prices_include_tax": true,
+    "tax_country_code": null,
+    "tax_registration_number": null,
+    "order_review_notification_sent_at": null,
+    "seen_at": null,
+    "created_at": "2026-03-30T14:30:00.000000Z",
+    "updated_at": "2026-03-30T14:30:00.000000Z",
+    "human_format": {
+      "date_human": "منذ ثانية واحدة",
+      "date_normal": "الأحد، مارس 30، 2026 2:30 م"
+    },
+    "transaction": {
+      "id": 301,
+      "deserved": "134.10",
+      "platform_fees": "14.90",
+      "total": "149.00",
+      "order_id": 12345,
+      "created_at": "2026-03-30T14:30:00.000000Z",
+      "payment_method": "dokanpay",
+      "is_by_platform": false,
+      "human_format": {
+        "payment.method": "البطائق الإئتمانية",
+        "created_at": "30 مارس 2026 2:30 م",
+        "created_at_text": "منذ ثانية واحدة",
+        "store_balance_scheduled_at_text": null,
+        "store_balance_scheduled_at": null
+      }
+    },
+    "items": [
+      {
+        "id": 101,
+        "quantity": 1,
+        "item_id": 42,
+        "item_type": "App\\Models\\StoreProduct",
+        "price": "149.00",
+        "fields": null,
+        "notes": null,
+        "order_id": 12345,
+        "created_at": "2026-03-30T14:30:00.000000Z",
+        "updated_at": "2026-03-30T14:30:00.000000Z",
+        "item": {
+          "id": 42,
+          "name": "Premium Digital Course",
+          "price": "199.00",
+          "actual_price": "149.00",
+          "type": "code",
+          "...": "additional product fields"
+        },
+        "codes": [
+          {
+            "id": 201,
+            "code": "XXXX-YYYY-ZZZZ",
+            "is_used": true,
+            "...": "additional code fields"
+          }
+        ]
+      }
+    ],
+    "customer": {
+      "id": 5678,
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com",
+      "country_code": 966,
+      "phone": "501234567",
+      "is_banned": false,
+      "ban_reason": null,
+      "store_id": 7,
+      "created_at": "2026-01-15T10:00:00.000000Z",
+      "updated_at": "2026-03-30T14:30:00.000000Z",
+      "deleted_at": null
+    },
+    "status": {
+      "id": 401,
+      "reason": null,
+      "status": 4,
+      "model_id": 12345,
+      "model_type": "App\\Models\\Order",
+      "created_at": "2026-03-30T14:30:00.000000Z",
+      "updated_at": "2026-03-30T14:30:00.000000Z",
+      "human_format": {
+        "text": "مكتمل",
+        "dashboard_color": "success",
+        "color": "success",
+        "date_human": "منذ ثانية واحدة",
+        "date_normal": "الأحد، مارس 30، 2026 2:30 م"
+      }
+    },
+    "statuses": [
+      {
+        "id": 401,
+        "reason": null,
+        "status": 4,
+        "model_id": 12345,
+        "model_type": "App\\Models\\Order",
+        "created_at": "2026-03-30T14:30:00.000000Z",
+        "updated_at": "2026-03-30T14:30:00.000000Z",
+        "human_format": {
+          "text": "مكتمل",
+          "dashboard_color": "success",
+          "color": "success",
+          "date_human": "منذ ثانية واحدة",
+          "date_normal": "الأحد، مارس 30، 2026 2:30 م"
+        }
+      }
+    ]
+  }
+}
+```
+
+## order.status.changed Payload
+
+The payload structure is identical to `order.created` -- the same relations are loaded (`transaction`, `items.item`, `items.codes`, `customer`, `status`, `statuses`). The `status` field reflects the new (current) status, and the `statuses` array contains the full status history.
+
+<Note>
+  The `order.status.changed` event is only fired when the order has more than one status (i.e., the initial status creation does not trigger this event -- only subsequent status changes do).
+</Note>
+
+```json
+{
+  "event": "order.status.changed",
+  "data": {
+    "id": 12345,
+    "store_id": 7,
+    "customer_id": 5678,
+    "coupon_id": null,
+    "total": "149.00",
+    "discount_amount": null,
+    "customer_note": null,
+    "meta": null,
+    "cost": "0.00",
+    "current_status": 5,
+    "tax_rate": "0.00",
+    "tax_amount": "0.00",
+    "prices_include_tax": true,
+    "tax_country_code": null,
+    "tax_registration_number": null,
+    "order_review_notification_sent_at": null,
+    "seen_at": null,
+    "created_at": "2026-03-30T14:30:00.000000Z",
+    "updated_at": "2026-03-31T10:00:00.000000Z",
+    "human_format": {
+      "date_human": "منذ يوم واحد",
+      "date_normal": "الأحد، مارس 30، 2026 2:30 م"
+    },
+    "transaction": {
+      "id": 301,
+      "deserved": "134.10",
+      "platform_fees": "14.90",
+      "total": "149.00",
+      "order_id": 12345,
+      "created_at": "2026-03-30T14:30:00.000000Z",
+      "payment_method": "dokanpay",
+      "is_by_platform": false,
+      "human_format": {
+        "payment.method": "البطائق الإئتمانية",
+        "created_at": "30 مارس 2026 2:30 م",
+        "created_at_text": "منذ يوم واحد",
+        "store_balance_scheduled_at_text": null,
+        "store_balance_scheduled_at": null
+      }
+    },
+    "items": [ "..." ],
+    "customer": { "..." : "same structure as order.created" },
+    "status": {
+      "id": 502,
+      "reason": null,
+      "status": 5,
+      "model_id": 12345,
+      "model_type": "App\\Models\\Order",
+      "created_at": "2026-03-31T10:00:00.000000Z",
+      "updated_at": "2026-03-31T10:00:00.000000Z",
+      "human_format": {
+        "text": "ملغي",
+        "dashboard_color": "error",
+        "color": "danger",
+        "date_human": "منذ ثانية واحدة",
+        "date_normal": "الثلاثاء، مارس 31، 2026 10:00 ص"
+      }
+    },
+    "statuses": [
+      {
+        "id": 401,
+        "reason": null,
+        "status": 4,
+        "model_id": 12345,
+        "model_type": "App\\Models\\Order",
+        "created_at": "2026-03-30T14:30:00.000000Z",
+        "updated_at": "2026-03-30T14:30:00.000000Z",
+        "human_format": {
+          "text": "مكتمل",
+          "dashboard_color": "success",
+          "color": "success",
+          "date_human": "منذ يوم واحد",
+          "date_normal": "الأحد، مارس 30، 2026 2:30 م"
+        }
+      },
+      {
+        "id": 502,
+        "reason": null,
+        "status": 5,
+        "model_id": 12345,
+        "model_type": "App\\Models\\Order",
+        "created_at": "2026-03-31T10:00:00.000000Z",
+        "updated_at": "2026-03-31T10:00:00.000000Z",
+        "human_format": {
+          "text": "ملغي",
+          "dashboard_color": "error",
+          "color": "danger",
+          "date_human": "منذ ثانية واحدة",
+          "date_normal": "الثلاثاء، مارس 31، 2026 10:00 ص"
+        }
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Field Reference
+
+### Top Level
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | string | Event type: `order.created` or `order.status.changed` |
+| `data` | object | The full order object |
+
+### data (Order)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Order ID |
+| `store_id` | integer | Store ID |
+| `customer_id` | integer | Customer ID (foreign key) |
+| `coupon_id` | integer\|null | Coupon ID if a coupon was applied |
+| `total` | string | Total order amount |
+| `discount_amount` | string\|null | Discount amount (if coupon was applied) |
+| `customer_note` | string\|null | Note left by the customer |
+| `meta` | object\|null | Additional order metadata (JSON) |
+| `cost` | string | Order cost |
+| `current_status` | integer\|null | Denormalized current status code |
+| `tax_rate` | string\|null | Tax rate applied (e.g., `"15.00"`) |
+| `tax_amount` | string\|null | Tax amount |
+| `prices_include_tax` | boolean | Whether prices already include tax (defaults to `true`) |
+| `tax_country_code` | string\|null | Country code for tax calculation (2 chars) |
+| `tax_registration_number` | string\|null | Store's tax registration number |
+| `order_review_notification_sent_at` | string\|null | ISO 8601 timestamp when review notification was sent |
+| `seen_at` | string\|null | ISO 8601 timestamp when the store owner viewed the order |
+| `created_at` | string | ISO 8601 timestamp when the order was created |
+| `updated_at` | string | ISO 8601 timestamp when the order was last updated |
+| `human_format` | object | Human-readable date strings (Arabic locale) |
+| `human_format.date_human` | string | Relative time (e.g., "منذ ثانية واحدة") |
+| `human_format.date_normal` | string | Formatted date string |
+| `transaction` | object\|null | Payment transaction details (selected fields only) |
+| `items` | array | Line items in the order |
+| `customer` | object | Customer who placed the order |
+| `status` | object | Current (latest) status |
+| `statuses` | array | Full status history (oldest first) |
+
+### data.transaction
+
+The transaction is loaded with a specific column selection. Only the following fields are included:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Transaction ID |
+| `deserved` | string | Amount the store owner receives (after platform fees) |
+| `platform_fees` | string | RMZ platform fee amount |
+| `total` | string | Total transaction amount |
+| `order_id` | integer | Associated order ID |
+| `created_at` | string | ISO 8601 timestamp |
+| `payment_method` | string | Payment method: `dokanpay`, `bank`, `paypal`, `coinbase`, `bank_transfer`, `free` |
+| `is_by_platform` | boolean | Whether the payment was processed through the RMZ payment system |
+| `human_format` | object | Human-readable transaction info (appended attribute) |
+| `human_format.payment.method` | string | Arabic payment method name (e.g., "البطائق الإئتمانية") |
+| `human_format.created_at` | string\|null | Formatted creation date |
+| `human_format.created_at_text` | string\|null | Relative creation time |
+| `human_format.store_balance_scheduled_at` | string\|null | Formatted scheduled balance date (always `null` in webhook since column is not selected) |
+| `human_format.store_balance_scheduled_at_text` | string\|null | Relative scheduled balance time (always `null` in webhook) |
+
+### data.customer
+
+The full customer model is loaded (minus `$hidden` fields: `remember_token`, `last_login_ip`, `last_login_at`).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Customer ID |
+| `firstName` | string\|null | First name |
+| `lastName` | string\|null | Last name |
+| `email` | string\|null | Email address |
+| `country_code` | integer\|null | Phone country code (e.g., `966`) |
+| `phone` | string\|null | Phone number (without country code) |
+| `is_banned` | boolean | Whether the customer is banned |
+| `ban_reason` | string\|null | Ban reason (if banned) |
+| `store_id` | integer | Store this customer belongs to |
+| `deleted_at` | string\|null | Soft delete timestamp |
+| `created_at` | string | ISO 8601 timestamp |
+| `updated_at` | string | ISO 8601 timestamp |
+
+### data.items[]
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Order item ID |
+| `quantity` | integer | Quantity purchased |
+| `item_id` | integer | Polymorphic item ID (typically a product ID) |
+| `item_type` | string | Polymorphic item type (e.g., `App\Models\StoreProduct`) |
+| `price` | string | Line item total price |
+| `fields` | object\|null | Custom fields submitted with the order item (JSON) |
+| `notes` | string\|null | Notes for this item |
+| `order_id` | integer | Parent order ID |
+| `created_at` | string | ISO 8601 timestamp |
+| `updated_at` | string | ISO 8601 timestamp |
+| `item` | object | The related product (loaded via polymorphic relation, includes soft-deleted products) |
+| `codes` | array | Delivered digital codes (for `code` type products) |
+
+### data.items[].item (Product)
+
+The full product model is included via `toArray()`. Key fields include:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Product ID |
+| `name` | string | Product name |
+| `price` | string | Original listed price |
+| `actual_price` | string | Current effective price (after discount, appended attribute) |
+| `type` | string | Product type: `code`, `file`, `subscription`, `service`, `card` |
+| `...` | | Additional product fields from the `store_products` table |
+
+### data.items[].codes[]
+
+The full code model is included. Key fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Code ID |
+| `code` | string | The delivered digital code |
+| `is_used` | boolean | Whether the code has been marked as used |
+| `...` | | Additional fields from the `store_product_codes` table |
+
+### data.status / data.statuses[]
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Status record ID |
+| `reason` | string\|null | Reason for the status change |
+| `status` | integer | Status code (1=Waiting for Payment, 2=Under Review, 3=Processing, 4=Completed, 5=Cancelled, 6=Refunded) |
+| `model_id` | integer | Order ID |
+| `model_type` | string | Always `App\Models\Order` |
+| `created_at` | string | ISO 8601 timestamp when this status was set |
+| `updated_at` | string | ISO 8601 timestamp |
+| `human_format` | object | Human-readable status info (appended attribute) |
+| `human_format.text` | string | Arabic status name (e.g., "مكتمل", "ملغي", "قيد التنفيذ") |
+| `human_format.dashboard_color` | string | Dashboard color key (e.g., `success`, `error`, `warning`, `default`, `processing`) |
+| `human_format.color` | string | UI color key (e.g., `success`, `danger`, `warning`, `info`, `secondary`) |
+| `human_format.date_human` | string | Relative time |
+| `human_format.date_normal` | string | Formatted date string |
+
+<Tip>
+  The `statuses` array is ordered chronologically. Use it to build a timeline of the order's lifecycle. The `status` object always reflects the latest/current status.
+</Tip>

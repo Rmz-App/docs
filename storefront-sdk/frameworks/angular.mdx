@@ -1,0 +1,147 @@
+---
+title: "Angular"
+description: "Use the Storefront SDK with Angular as an injectable service."
+---
+
+In Angular, wrap the SDK in an injectable service to share a single instance across your application.
+
+## Service Setup
+
+```typescript
+// services/storefront.service.ts
+import { Injectable } from '@angular/core';
+import { createStorefrontSDK, type SecureStorefrontSDK } from 'rmz-storefront-sdk';
+import { environment } from '../environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class StorefrontService {
+  private sdk: SecureStorefrontSDK;
+
+  constructor() {
+    this.sdk = createStorefrontSDK({
+      apiUrl: environment.rmzApiUrl || 'https://front.rmz.gg/api',
+      publicKey: environment.rmzPublicKey,
+    });
+  }
+
+  get store() { return this.sdk.store; }
+  get products() { return this.sdk.products; }
+  get cart() { return this.sdk.cart; }
+  get auth() { return this.sdk.auth; }
+  get orders() { return this.sdk.orders; }
+  get wishlist() { return this.sdk.wishlist; }
+  get checkout() { return this.sdk.checkout; }
+  get reviews() { return this.sdk.reviews; }
+  get courses() { return this.sdk.courses; }
+
+  setAuthToken(token: string | null) {
+    this.sdk.setAuthToken(token);
+  }
+
+  setCartToken(token: string | null) {
+    this.sdk.setCartToken(token);
+  }
+}
+```
+
+## Using in Components
+
+```typescript
+// components/product-list.component.ts
+import { Component, OnInit } from '@angular/core';
+import { StorefrontService } from '../services/storefront.service';
+
+@Component({
+  selector: 'app-product-list',
+  template: `
+    <div *ngIf="loading">Loading...</div>
+    <div *ngFor="let product of products" class="product-card">
+      <h3>{{ product.name }}</h3>
+      <p>{{ product.price }}</p>
+      <button (click)="addToCart(product.id)">Add to Cart</button>
+    </div>
+  `
+})
+export class ProductListComponent implements OnInit {
+  products: any[] = [];
+  loading = true;
+
+  constructor(private storefront: StorefrontService) {}
+
+  async ngOnInit() {
+    try {
+      const { data } = await this.storefront.products.getAll({ per_page: 12 });
+      this.products = data;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async addToCart(productId: number) {
+    await this.storefront.cart.addItem(productId, 1);
+  }
+}
+```
+
+## Cart Service Example
+
+```typescript
+// services/cart.service.ts
+import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
+import { StorefrontService } from './storefront.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class CartService {
+  private cartSubject = new BehaviorSubject<any>(null);
+  private countSubject = new BehaviorSubject<number>(0);
+
+  cart$ = this.cartSubject.asObservable();
+  count$ = this.countSubject.asObservable();
+
+  constructor(private storefront: StorefrontService) {}
+
+  async addItem(productId: number, quantity = 1) {
+    const cart = await this.storefront.cart.addItem(productId, quantity);
+    this.cartSubject.next(cart);
+    this.countSubject.next(cart.count);
+    return cart;
+  }
+
+  async refresh() {
+    const cart = await this.storefront.cart.get();
+    this.cartSubject.next(cart);
+    this.countSubject.next(cart.count);
+  }
+
+  async applyCoupon(code: string) {
+    const cart = await this.storefront.cart.applyCoupon(code);
+    this.cartSubject.next(cart);
+    return cart;
+  }
+}
+```
+
+## Environment Configuration
+
+```typescript
+// environments/environment.ts
+export const environment = {
+  production: false,
+  rmzApiUrl: 'https://front.rmz.gg/api',
+  rmzPublicKey: 'pk_your_public_key',
+};
+```
+
+```typescript
+// environments/environment.prod.ts
+export const environment = {
+  production: true,
+  rmzApiUrl: 'https://front.rmz.gg/api',
+  rmzPublicKey: 'pk_your_public_key',
+};
+```

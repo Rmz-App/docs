@@ -1,0 +1,162 @@
+---
+title: "Storefront SDK Overview"
+description: "Install and configure the RMZ Storefront SDK — a secure, framework-agnostic TypeScript SDK for building custom storefronts."
+---
+
+The RMZ Storefront SDK is a TypeScript-first, framework-agnostic library that wraps the [Storefront API](/storefront-api/overview) into a clean, type-safe interface. Use it with React, Vue, Angular, Svelte, or vanilla JavaScript in both client-side and server-side environments.
+
+<CardGroup cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/Dokan-E-Commerce/rmz-storefront-sdk">
+    Source code, issues, and releases.
+  </Card>
+  <Card title="Next.js Starter" icon="react" href="https://github.com/Dokan-E-Commerce/rmz-storefront-nextjs">
+    Full example storefront built with Next.js and the SDK.
+  </Card>
+</CardGroup>
+
+## Features
+
+- **HMAC-SHA256 authentication** with automatic signature generation for server-to-server requests
+- **Firebase/Supabase-style query builder** with intuitive method chaining
+- **Universal compatibility** — works in browsers, Node.js, Web Workers, and React Native
+- **TypeScript first** with full type safety and IntelliSense
+- **Automatic retry, caching, and request deduplication**
+- **Singleton pattern** for efficient resource usage
+- **~15 KB gzipped**, zero external runtime dependencies, tree-shakeable
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install rmz-storefront-sdk
+```
+
+```bash yarn
+yarn add rmz-storefront-sdk
+```
+
+```bash pnpm
+pnpm add rmz-storefront-sdk
+```
+
+</CodeGroup>
+
+The current version is **2.1.2**. The package is published as `rmz-storefront-sdk` on npm.
+
+## Quick Start
+
+### Client-side (browser)
+
+On the client side, only a `publicKey` is needed. The default API URL points to `https://front.rmz.gg/api`.
+
+```typescript
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+
+const sdk = createStorefrontSDK({
+  publicKey: 'pk_your_public_key_here',
+  apiUrl: 'https://front.rmz.gg/api', // default, can be omitted
+  environment: 'production'
+});
+
+// Fetch store information
+const store = await sdk.store.get();
+
+// Browse products with the query builder
+const featured = await sdk.products
+  .where('featured', '=', true)
+  .orderBy('created_at', 'desc')
+  .limit(8)
+  .get();
+
+// Add a product to the cart
+const cart = await sdk.cart.addItem(productId, 2);
+```
+
+### Server-side (Node.js / SSR)
+
+On the server, provide both `publicKey` and `secretKey` to enable HMAC-SHA256 authentication for every request.
+
+```typescript
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+
+const sdk = createStorefrontSDK({
+  publicKey: process.env.RMZ_PUBLIC_KEY!,
+  secretKey: process.env.RMZ_SECRET_KEY!, // enables HMAC signatures
+  apiUrl: 'https://front.rmz.gg/api',
+  environment: 'production'
+});
+
+const store = await sdk.store.get();
+const products = await sdk.products.getAll({ per_page: 100 });
+```
+
+<Warning>
+Never expose your `secretKey` in client-side code. It must only be used in server-side environments (Node.js, SSR, API routes).
+</Warning>
+
+## SDK Modules
+
+The SDK exposes the following namespaces on the instance returned by `createStorefrontSDK()`:
+
+| Namespace | Description | Auth Required |
+|-----------|-------------|:---:|
+| [`sdk.store`](/storefront-sdk/store) | Store info, currencies, settings, features, banners | No |
+| [`sdk.products`](/storefront-sdk/products) | Product listing, search, query builder, related products | No |
+| [`sdk.categories`](/storefront-sdk/products) | Category listing and category products | No |
+| [`sdk.cart`](/storefront-sdk/cart) | Cart management, coupons, validation, summary | No (uses cart token) |
+| [`sdk.checkout`](/storefront-sdk/checkout) | Create checkout sessions, get payment results | No |
+| [`sdk.auth`](/storefront-sdk/customer) | OTP login, registration, profile management | Partial |
+| [`sdk.orders`](/storefront-sdk/orders) | Order history, subscriptions, courses | Yes |
+| [`sdk.wishlist`](/storefront-sdk/wishlist) | Wishlist add/remove/check | Yes |
+| [`sdk.reviews`](/storefront-sdk/reviews) | Store reviews, submit product reviews | Partial |
+| [`sdk.courses`](/storefront-sdk/courses) | Course access, progress tracking, module completion | Yes |
+| [`sdk.pages`](/storefront-sdk/management) | Static pages | No |
+| [`sdk.components`](/storefront-sdk/management) | Homepage components | No |
+| [`sdk.management`](/storefront-sdk/management) | Analytics, inventory, exports (server-side only) | Secret key |
+| `sdk.customTokens` | Generate, list, revoke, and validate API tokens | Yes |
+
+## Environment Detection
+
+The SDK automatically detects its runtime environment and adjusts behavior:
+
+```typescript
+import { Environment } from 'rmz-storefront-sdk';
+
+console.log(Environment.info);
+// { isServer: false, isBrowser: true, isWebWorker: false, isNode: false, platform: 'browser' }
+```
+
+- **Browser**: Uses `X-Client-Auth` header, warns if `secretKey` is present.
+- **Node.js**: Generates HMAC-SHA256 signatures on every request when `secretKey` is provided.
+- **React Native**: Treated as a browser environment.
+
+## Health Check
+
+Verify API connectivity at any time:
+
+```typescript
+const health = await sdk.healthCheck();
+if (health.status === 'ok') {
+  console.log('API is reachable');
+} else {
+  console.error('API error:', health.message);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/storefront-sdk/authentication">
+    Understand the HMAC security model and key management.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/storefront-sdk/configuration">
+    All configuration options, environment variables, and defaults.
+  </Card>
+  <Card title="Products" icon="box" href="/storefront-sdk/products">
+    Query builder, search, and product retrieval.
+  </Card>
+  <Card title="Framework Guides" icon="code" href="/storefront-sdk/frameworks/react">
+    React, Vue, Angular, and vanilla JS examples.
+  </Card>
+</CardGroup>

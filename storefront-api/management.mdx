@@ -1,0 +1,512 @@
+---
+title: "Management API"
+description: "Server-to-server endpoints for analytics, inventory management, order access, customer export, and webhook data."
+---
+
+The Management API provides server-to-server access to store data for integrations and automation. All endpoints require authentication via a secret key.
+
+<Warning>
+These endpoints are intended for backend-to-backend communication only. Never expose your secret key in client-side code.
+</Warning>
+
+## Authentication
+
+All Management API endpoints require the store's secret key, passed via the `SecretKeyAuthMiddleware`. Include the key in the `X-Secret-Key` header:
+
+```
+X-Secret-Key: sk_live_...
+```
+
+Management endpoints are subject to a separate, lower rate limit (`throttle:management`).
+
+---
+
+## GET /management/analytics
+
+Get store analytics and insights for a given time period.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Secret-Key | {secret_key} | Yes |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| period | string | No | Time period: `today`, `week`, `month`, `quarter`, `year`. Default: `month` |
+| metrics | array | No | Metrics to include: `sales`, `orders`, `customers`, `products`, `reviews`. Default: `["sales", "orders", "customers"]` |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/management/analytics?period=month&metrics[]=sales&metrics[]=orders" \
+  -H "X-Secret-Key: sk_live_abc123..."
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  period: "month",
+  "metrics[]": "sales",
+});
+params.append("metrics[]", "orders");
+
+const response = await fetch(`https://front.rmz.gg/api/management/analytics?${params}`, {
+  headers: { "X-Secret-Key": "sk_live_abc123..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/management/analytics",
+    headers={"X-Secret-Key": "sk_live_abc123..."},
+    params={"period": "month", "metrics": ["sales", "orders"]}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Secret-Key" => "sk_live_abc123..."])
+    ->get("https://front.rmz.gg/api/management/analytics", [
+        "period" => "month",
+        "metrics" => ["sales", "orders"]
+    ]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "sales": {
+      "total_orders": 150,
+      "total_revenue": 45000.00,
+      "average_order_value": 300.00
+    },
+    "orders": {
+      "total_orders": 180,
+      "pending_orders": 12,
+      "completed_orders": 150,
+      "cancelled_orders": 18
+    },
+    "customers": {
+      "new_customers": 45,
+      "verified_customers": 38
+    },
+    "products": {
+      "new_products": 8,
+      "active_products": 120,
+      "featured_products": 15
+    },
+    "reviews": {
+      "total_reviews": 35,
+      "average_rating": 4.6,
+      "published_reviews": 30
+    }
+  }
+}
+```
+
+---
+
+## POST /management/inventory/update
+
+Bulk update product inventory.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Secret-Key | {secret_key} | Yes |
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| updates | array | Yes | Array of inventory update objects |
+| updates[].product_id | integer | Yes | Product ID |
+| updates[].stock_change | integer | Yes | Stock quantity change (positive or negative) |
+| updates[].unlimited_stock | boolean | No | Set to true for unlimited stock |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/management/inventory/update" \
+  -H "X-Secret-Key: sk_live_abc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "updates": [
+      { "product_id": 101, "stock_change": 50 },
+      { "product_id": 102, "stock_change": -5 },
+      { "product_id": 103, "unlimited_stock": true }
+    ]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/management/inventory/update", {
+  method: "POST",
+  headers: {
+    "X-Secret-Key": "sk_live_abc123...",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    updates: [
+      { product_id: 101, stock_change: 50 },
+      { product_id: 102, stock_change: -5 },
+      { product_id: 103, unlimited_stock: true }
+    ]
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/management/inventory/update",
+    headers={"X-Secret-Key": "sk_live_abc123..."},
+    json={
+        "updates": [
+            {"product_id": 101, "stock_change": 50},
+            {"product_id": 102, "stock_change": -5},
+            {"product_id": 103, "unlimited_stock": True}
+        ]
+    }
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Secret-Key" => "sk_live_abc123..."])
+    ->post("https://front.rmz.gg/api/management/inventory/update", [
+        "updates" => [
+            ["product_id" => 101, "stock_change" => 50],
+            ["product_id" => 102, "stock_change" => -5],
+            ["product_id" => 103, "unlimited_stock" => true]
+        ]
+    ]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [],
+  "message": "Inventory updated successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 422 | Validation error (invalid product_id, missing required fields) |
+| 500 | Update failed |
+
+<Note>
+Inventory updates run within a database transaction. If any single update fails, all changes are rolled back. Product caches are automatically invalidated after updates.
+</Note>
+
+---
+
+## GET /management/orders
+
+Get store orders with filtering and sorting.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Secret-Key | {secret_key} | Yes |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| status | string | No | Filter by order status |
+| per_page | integer | No | Orders per page (1-100). Default: `20` |
+| sort | string | No | Sort order: `created_desc`, `created_asc`, `amount_desc`, `amount_asc`. Default: `created_desc` |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/management/orders?per_page=20&sort=created_desc" \
+  -H "X-Secret-Key: sk_live_abc123..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/management/orders?per_page=20", {
+  headers: { "X-Secret-Key": "sk_live_abc123..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/management/orders",
+    headers={"X-Secret-Key": "sk_live_abc123..."},
+    params={"per_page": 20, "sort": "created_desc"}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Secret-Key" => "sk_live_abc123..."])
+    ->get("https://front.rmz.gg/api/management/orders", [
+        "per_page" => 20, "sort" => "created_desc"
+    ]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+Paginated list of orders with customer and item details.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 78901,
+      "total": 399.98,
+      "status": "Completed",
+      "customer": { "id": 123, "first_name": "Ahmed", "last_name": "Ali" },
+      "items": [...],
+      "created_at": "2024-06-15T14:30:00.000000Z"
+    }
+  ],
+  "pagination": { ... }
+}
+```
+
+---
+
+## GET /management/export/customers
+
+Export customer data in JSON or CSV format.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Secret-Key | {secret_key} | Yes |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| format | string | No | Export format: `json` or `csv`. Default: `json` |
+| filters | object | No | Optional filters |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+# JSON format
+curl "https://front.rmz.gg/api/management/export/customers?format=json" \
+  -H "X-Secret-Key: sk_live_abc123..."
+
+# CSV format
+curl "https://front.rmz.gg/api/management/export/customers?format=csv" \
+  -H "X-Secret-Key: sk_live_abc123..." \
+  --output customers.csv
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/management/export/customers?format=json", {
+  headers: { "X-Secret-Key": "sk_live_abc123..." }
+});
+const data = await response.json();
+```
+
+```python Python
+# JSON
+response = requests.get("https://front.rmz.gg/api/management/export/customers",
+    headers={"X-Secret-Key": "sk_live_abc123..."},
+    params={"format": "json"}
+)
+data = response.json()
+
+# CSV
+response = requests.get("https://front.rmz.gg/api/management/export/customers",
+    headers={"X-Secret-Key": "sk_live_abc123..."},
+    params={"format": "csv"}
+)
+with open("customers.csv", "wb") as f:
+    f.write(response.content)
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Secret-Key" => "sk_live_abc123..."])
+    ->get("https://front.rmz.gg/api/management/export/customers", ["format" => "json"]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### JSON Format (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "first_name": "Ahmed",
+      "last_name": "Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567",
+      "country_code": "966"
+    }
+  ],
+  "message": "Customer data exported successfully"
+}
+```
+
+#### CSV Format (200)
+
+Returns a downloadable CSV file with `Content-Type: text/csv`.
+
+---
+
+## GET /management/webhooks/data
+
+Get recent data for webhook-style integrations, filtered by event type.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Secret-Key | {secret_key} | Yes |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| event | string | Yes | Event type: `order.created`, `order.updated`, `product.updated`, `customer.created` |
+| limit | integer | No | Number of records (1-100). Default: `50` |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/management/webhooks/data?event=order.created&limit=10" \
+  -H "X-Secret-Key: sk_live_abc123..."
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://front.rmz.gg/api/management/webhooks/data?event=order.created&limit=10",
+  { headers: { "X-Secret-Key": "sk_live_abc123..." } }
+);
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/management/webhooks/data",
+    headers={"X-Secret-Key": "sk_live_abc123..."},
+    params={"event": "order.created", "limit": 10}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Secret-Key" => "sk_live_abc123..."])
+    ->get("https://front.rmz.gg/api/management/webhooks/data", [
+        "event" => "order.created", "limit" => 10
+    ]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+The response shape depends on the event type. For `order.created` / `order.updated`:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 78901,
+      "total": 399.98,
+      "status": "Completed",
+      "customer": { ... },
+      "items": [ ... ],
+      "created_at": "2024-06-15T14:30:00.000000Z"
+    }
+  ],
+  "message": "Webhook data for order.created"
+}
+```
+
+For `product.updated`:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 101,
+      "name": "Premium Game Key",
+      "slug": "premium-game-key",
+      "price": 199.99,
+      "type": "code",
+      "image": { ... },
+      "categories": [ ... ]
+    }
+  ],
+  "message": "Webhook data for product.updated"
+}
+```
+
+For `customer.created`:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "first_name": "Ahmed",
+      "last_name": "Ali",
+      "email": "ahmed@example.com"
+    }
+  ],
+  "message": "Webhook data for customer.created"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 422 | Validation error (missing or invalid event type) |
+
+### Supported Event Types
+
+| Event | Description |
+|-------|-------------|
+| `order.created` | Recently created orders |
+| `order.updated` | Recently updated orders |
+| `product.updated` | Recently updated products |
+| `customer.created` | Recently created customers |

@@ -1,0 +1,347 @@
+---
+title: "Product Reviews"
+description: "Get product reviews and statistics, and submit reviews for purchased products."
+---
+
+## GET /products/{id}/reviews
+
+Get published reviews for a specific product.
+
+### Authentication
+
+None required.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Product ID |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| per_page | integer | No | Reviews per page (1-50). Default: `10` |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/products/101/reviews?per_page=10"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/products/101/reviews?per_page=10");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/products/101/reviews", params={"per_page": 10})
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/products/101/reviews", ["per_page" => 10]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "rating": 5,
+      "comment": "Excellent product, received instantly!",
+      "is_published": true,
+      "reviewer": {
+        "id": 123,
+        "name": "Ahmed Ali",
+        "first_name": "Ahmed",
+        "last_name": "Ali"
+      },
+      "product": {
+        "id": 101,
+        "type": "App\\Models\\StoreProduct"
+      },
+      "created_at": "2024-06-15T10:30:00.000000Z",
+      "updated_at": "2024-06-15T10:30:00.000000Z"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 3,
+    "per_page": 10,
+    "total": 25,
+    "from": 1,
+    "to": 10,
+    "has_more_pages": true,
+    "next_page_url": "...",
+    "prev_page_url": null
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 404 | Product not found |
+
+---
+
+## GET /products/{id}/reviews/stats
+
+Get review statistics for a specific product including total count, average rating, and distribution.
+
+### Authentication
+
+None required.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Product ID |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/products/101/reviews/stats"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/products/101/reviews/stats");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/products/101/reviews/stats")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/products/101/reviews/stats");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "total_reviews": 142,
+    "average_rating": 4.7,
+    "rating_distribution": {
+      "1": 2,
+      "2": 5,
+      "3": 15,
+      "4": 38,
+      "5": 82
+    }
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 404 | Product not found |
+
+---
+
+## POST /products/{id}/reviews
+
+Submit a review for a product. The customer must have purchased and received the product (completed order).
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Product ID |
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| rating | integer | Yes | Rating from 1 to 5 |
+| comment | string | Yes | Review text (max 1000 characters) |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/products/101/reviews" \
+  -H "Authorization: Bearer 1|abc123xyz..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 5,
+    "comment": "Excellent product, received instantly!"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/products/101/reviews", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer 1|abc123xyz...",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    rating: 5,
+    comment: "Excellent product, received instantly!"
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/products/101/reviews",
+    headers={"Authorization": "Bearer 1|abc123xyz..."},
+    json={"rating": 5, "comment": "Excellent product, received instantly!"}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->post("https://front.rmz.gg/api/products/101/reviews", [
+    "rating" => 5,
+    "comment" => "Excellent product, received instantly!"
+]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 50,
+    "rating": 5,
+    "comment": "Excellent product, received instantly!",
+    "is_published": false,
+    "reviewer": null,
+    "product": {
+      "id": 101,
+      "type": "App\\Models\\StoreProduct"
+    },
+    "created_at": "2024-06-15T10:30:00.000000Z",
+    "updated_at": "2024-06-15T10:30:00.000000Z"
+  },
+  "message": "Review submitted successfully"
+}
+```
+
+<Warning>
+Reviews are submitted with `is_published: false` and require store owner approval before they appear publicly.
+</Warning>
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Already reviewed this product |
+| 401 | Not authenticated |
+| 403 | Customer has not purchased this product (only completed orders qualify) |
+| 404 | Product not found |
+| 422 | Validation error (missing rating/comment, rating out of range) |
+
+---
+
+## GET /customer/reviews/{id}
+
+Get the authenticated customer's review for a specific product.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Product ID |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/customer/reviews/101" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/customer/reviews/101", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/customer/reviews/101", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->get("https://front.rmz.gg/api/customer/reviews/101");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 50,
+    "rating": 5,
+    "comment": "Excellent product, received instantly!",
+    "is_published": true,
+    "reviewer": null,
+    "product": {
+      "id": 101,
+      "type": "App\\Models\\StoreProduct"
+    },
+    "created_at": "2024-06-15T10:30:00.000000Z",
+    "updated_at": "2024-06-15T10:30:00.000000Z"
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 401 | Not authenticated |
+| 404 | Review not found |

@@ -1,0 +1,150 @@
+---
+title: List Products
+description: Retrieve a paginated list of products in your store.
+---
+
+# List Products
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono font-bold">GET</span>
+  <code>/products</code>
+</div>
+
+Returns a paginated list of products with basic information (ID, name, slug, type, and price).
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `page` | integer | No | Page number (default: 1) |
+
+<Snippet file="pagination-note.mdx" />
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/products?page=1" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/products?page=1", {
+  headers: { "Authorization": "Bearer YOUR_API_TOKEN" }
+});
+const products = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://merchant-api.rmz.gg/shawarma/products",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"},
+    params={"page": 1}
+)
+products = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/products?page=1");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Success Response
+
+```json
+{
+  "message": null,
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 101,
+        "name": "Premium License",
+        "slug": "premium-license",
+        "type": "code",
+        "price": 49.99,
+        "actual_price": 49.99,
+        "current_stock": 25,
+        "is_new": false,
+        "is_discounted": false,
+        "is_discount_expired": false,
+        "show_discount_countdown": false,
+        "show_discount_savings": false,
+        "discount_savings_amount": 0
+      },
+      {
+        "id": 102,
+        "name": "Monthly Subscription",
+        "slug": "monthly-subscription",
+        "type": "subscription",
+        "price": 19.99,
+        "actual_price": 19.99,
+        "current_stock": 10000,
+        "is_new": false,
+        "is_discounted": false,
+        "is_discount_expired": false,
+        "show_discount_countdown": false,
+        "show_discount_savings": false,
+        "discount_savings_amount": 0
+      }
+    ],
+    "first_page_url": "https://merchant-api.rmz.gg/shawarma/products?page=1",
+    "from": 1,
+    "next_page_url": "https://merchant-api.rmz.gg/shawarma/products?page=2",
+    "path": "https://merchant-api.rmz.gg/shawarma/products",
+    "per_page": 15,
+    "prev_page_url": null,
+    "to": 15
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+<Note>
+  Only the selected fields (`id`, `name`, `slug`, `type`, `price`) are returned from the database, but the model's computed attributes (`actual_price`, `current_stock`, `is_new`, `is_discounted`, etc.) are always appended. Use the [Get Product](/merchant-api/products/get-product) endpoint for the full product object.
+</Note>
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | integer | Product ID |
+| `name` | string | Product name |
+| `slug` | string | URL-friendly product identifier |
+| `type` | string | Product type: `product`, `code`, `service`, `subscription`, `course`, `license` |
+| `price` | float | Product price |
+| `actual_price` | float | Computed selling price (discount price if active, otherwise regular price) |
+| `current_stock` | integer | Current available stock |
+| `is_new` | boolean | Whether the product was created in the last 12 hours |
+| `is_discounted` | boolean | Whether an active discount is currently applied |
+| `is_discount_expired` | boolean | Whether the discount has expired |
+| `show_discount_countdown` | boolean | Whether to show a discount countdown timer |
+| `show_discount_savings` | boolean | Whether to show discount savings amount |
+| `discount_savings_amount` | float | Amount saved with discount (0 if no active discount) |
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |

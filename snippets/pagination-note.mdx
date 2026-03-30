@@ -1,0 +1,24 @@
+Paginated endpoints return 15 items per page using simple pagination. Use the `page` query parameter to navigate. Paginated data is nested inside the `data` field:
+
+```json
+{
+  "message": null,
+  "data": {
+    "current_page": 1,
+    "data": ["...items..."],
+    "first_page_url": "https://merchant-api.rmz.gg/shawarma/orders?page=1",
+    "from": 1,
+    "next_page_url": "https://merchant-api.rmz.gg/shawarma/orders?page=2",
+    "path": "https://merchant-api.rmz.gg/shawarma/orders",
+    "per_page": 15,
+    "prev_page_url": null,
+    "to": 15
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+<Note>
+  Simple pagination does not return a total count or last page URL. Use `next_page_url` to determine if more pages exist (it will be `null` on the last page).
+</Note>

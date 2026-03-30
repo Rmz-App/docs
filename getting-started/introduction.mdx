@@ -1,0 +1,54 @@
+---
+title: Introduction
+description: Learn about the RMZ platform and its developer ecosystem.
+---
+
+# Introduction to RMZ
+
+RMZ is a multi-tenant e-commerce platform built for **digital products** in the MENA region. Merchants create stores to sell digital codes, software licenses, subscriptions, online courses, and services — all with built-in payment processing, customer management, and hosted storefronts.
+
+## What You Can Build
+
+### Custom Storefronts
+Use the **Storefront API** or **Storefront SDK** to build a fully custom shopping experience. Browse products, manage carts, process checkout, and handle customer authentication — all headlessly.
+
+### Store Automation
+Use the **Merchant API** to programmatically manage your store. List orders, create orders on behalf of customers, update statuses, and pull statistics into your own dashboards or CRMs.
+
+### Embedded Checkout
+Use the **Embed API** to drop a quick-purchase widget onto any external website. Customers can buy a product without leaving your site.
+
+### Software Licensing
+Use the **License Verification API** to protect your software. Customers purchase license keys from your store, and your software verifies them with a single API call. Supports hardware ID locking, IP locking, activation limits, and end-to-end encryption.
+
+### FiveM Scripts
+Use the **FiveM integration** to sell and protect FiveM server scripts with automatic license key generation and verification.
+
+## Platform Highlights
+
+- **Digital-first** — purpose-built for digital products, not physical goods
+- **MENA-focused** — supports Saudi Arabia, UAE, Bahrain, Qatar, Oman, and Kuwait
+- **Multi-payment** — integrated payment gateways for the region
+- **Arabic-native** — full Arabic language support and RTL layouts
+- **Multi-tenant** — each merchant gets an isolated store with its own subdomain or custom domain
+
+## APIs at a Glance
+
+| API | Base URL | Auth | Purpose |
+|-----|----------|------|---------|
+| Merchant API | `https://merchant-api.rmz.gg/shawarma` | Bearer token | Store management |
+| Storefront API | `https://front.rmz.gg/api` | OTP + Bearer token | Customer-facing shopping |
+| Embed API | `https://embed.rmz.gg/api/embed` | X-Embed-Key header | Embedded checkout widget |
+| License API | `https://license.rmz.gg` | None (product_id in body) | Software license verification |
+| FiveM API | `https://fivem.rmz.gg` | None (product_id in body) | FiveM license verification |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/getting-started/quickstart">
+    Make your first API call in 5 minutes.
+  </Card>
+  <Card title="Authentication" icon="lock" href="/getting-started/authentication">
+    Understand how auth works across all APIs.
+  </Card>
+</CardGroup>

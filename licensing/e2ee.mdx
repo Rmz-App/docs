@@ -1,0 +1,190 @@
+---
+title: "End-to-End Encryption (E2EE)"
+description: "Encrypt all license verification responses with AES-256-GCM to prevent man-in-the-middle attacks and proxy spoofing."
+---
+
+When E2EE is enabled on a license product, **all** API responses (both success and error) are encrypted with AES-256-GCM. Your software decrypts the response locally using a shared encryption key.
+
+## Why Use E2EE
+
+Without encryption, an attacker can intercept or modify the API response before it reaches your software. Common attacks include:
+
+- **Man-in-the-middle** -- intercepting and tampering with the response in transit
+- **Local proxy spoofing** -- setting up a fake local server that always returns `"success": true`
+- **Response sniffing** -- reading license details, plan info, or activation data
+
+E2EE prevents all three. Even if the response is intercepted, it cannot be read or modified without the encryption key.
+
+## Setup
+
+<Steps>
+  <Step title="Enable E2EE">
+    Edit your license product in the dashboard and toggle **E2EE** on.
+  </Step>
+  <Step title="Copy the encryption key">
+    After saving, copy the **encryption key** -- a 64-character hex string (representing 32 bytes).
+  </Step>
+  <Step title="Embed the key in your software">
+    Store the key in your application. Your code will use it to decrypt every API response.
+  </Step>
+</Steps>
+
+## Encrypted Response Format
+
+When E2EE is enabled, the API always responds with this structure (regardless of success or error):
+
+```json
+{
+  "encrypted": true,
+  "payload": "base64-encoded-ciphertext",
+  "nonce": "base64-encoded-12-byte-nonce",
+  "tag": "base64-encoded-16-byte-auth-tag"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `encrypted` | Always `true` when E2EE is active |
+| `payload` | Base64-encoded AES-256-GCM ciphertext |
+| `nonce` | Base64-encoded 12-byte initialization vector |
+| `tag` | Base64-encoded 16-byte authentication tag |
+
+## Decryption Steps
+
+1. Base64-decode `payload`, `nonce`, and `tag`
+2. Convert your 64-character hex key to 32 raw bytes
+3. Decrypt using AES-256-GCM with the key, nonce, and tag
+4. Parse the resulting plaintext as JSON -- this is the same response you would get without E2EE
+
+## Decryption by Language
+
+<Tabs>
+  <Tab title="Node.js">
+    Uses the built-in `crypto` module. No dependencies needed.
+
+    ```javascript
+    const crypto = require("crypto");
+
+    function decryptResponse(body, hexKey) {
+      const key = Buffer.from(hexKey, "hex");
+      const nonce = Buffer.from(body.nonce, "base64");
+      const tag = Buffer.from(body.tag, "base64");
+      const ciphertext = Buffer.from(body.payload, "base64");
+
+      const decipher = crypto.createDecipheriv("aes-256-gcm", key, nonce);
+      decipher.setAuthTag(tag);
+
+      let plaintext = decipher.update(ciphertext, null, "utf8");
+      plaintext += decipher.final("utf8");
+
+      return JSON.parse(plaintext);
+    }
+    ```
+  </Tab>
+  <Tab title="Python">
+    Requires the `cryptography` library: `pip install cryptography`
+
+    ```python
+    import json, base64
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    def decrypt_response(body, hex_key):
+        key = bytes.fromhex(hex_key)
+        nonce = base64.b64decode(body["nonce"])
+        tag = base64.b64decode(body["tag"])
+        ciphertext = base64.b64decode(body["payload"])
+
+        aesgcm = AESGCM(key)
+        plaintext = aesgcm.decrypt(nonce, ciphertext + tag, None)
+        return json.loads(plaintext)
+    ```
+  </Tab>
+  <Tab title="PHP">
+    Uses the built-in OpenSSL extension (enabled by default in PHP 7.1+).
+
+    ```php
+    function decrypt_response(array $body, string $hexKey): ?array
+    {
+        $key = hex2bin($hexKey);
+        $nonce = base64_decode($body['nonce']);
+        $tag = base64_decode($body['tag']);
+        $ciphertext = base64_decode($body['payload']);
+
+        $plaintext = openssl_decrypt(
+            $ciphertext, 'aes-256-gcm', $key,
+            OPENSSL_RAW_DATA, $nonce, $tag
+        );
+
+        if ($plaintext === false) {
+            return null;
+        }
+
+        return json_decode($plaintext, true);
+    }
+    ```
+  </Tab>
+  <Tab title="Lua / FiveM">
+    FiveM's Lua runtime does not have built-in AES-256-GCM support. The recommended approach is to run a small Node.js helper that handles decryption, and call it from Lua via HTTP.
+
+    ```lua
+    local DECRYPT_URL = "http://127.0.0.1:3999/decrypt"
+
+    local function DecryptResponse(encryptedBody, callback)
+        local payload = json.encode({
+            payload = encryptedBody.payload,
+            nonce = encryptedBody.nonce,
+            tag = encryptedBody.tag,
+            key = ENCRYPTION_KEY,
+        })
+
+        PerformHttpRequest(DECRYPT_URL, function(statusCode, responseText)
+            if statusCode == 200 then
+                callback(json.decode(responseText))
+            else
+                callback(nil)
+            end
+        end, "POST", payload, { ["Content-Type"] = "application/json" })
+    end
+    ```
+
+    See the [Lua / FiveM example](/licensing/examples/lua-fivem) for the full implementation.
+  </Tab>
+</Tabs>
+
+## Key Rotation
+
+You can rotate the encryption key at any time from the product edit page in your dashboard. When you rotate:
+
+- A new 64-character hex key is generated
+- The old key stops working **immediately**
+- You must update the key in your software and push a new version to your users
+
+<Warning>
+  After rotating the key, any running instances of your software using the old key will fail to decrypt responses. Plan key rotations alongside software updates.
+</Warning>
+
+## Security Considerations
+
+### What E2EE protects against
+
+- Intercepting and modifying API responses in transit
+- Setting up a fake local server that always returns `"success": true`
+- Sniffing license details, plan info, or activation data from the network
+
+### What E2EE does not protect against
+
+- Reverse engineering your compiled binary to extract the encryption key or bypass the check entirely
+- Memory dumping at runtime to read decrypted responses
+- Patching your binary to skip the verification call
+
+### Recommendations
+
+<Tip>
+  E2EE raises the bar significantly, but treat it as one layer in a defense-in-depth approach, not a silver bullet.
+</Tip>
+
+- **Obfuscate your code** -- make it harder to read and reverse engineer
+- **Embed verification deep** in your application logic, not in a single easily-patchable function
+- **Use native compilation** (not interpreted scripts) when possible
+- **Combine license verification** with other integrity checks
+- **Don't store the encryption key as a plain string** -- derive it at runtime from multiple values

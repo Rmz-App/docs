@@ -1,0 +1,142 @@
+---
+title: "Store"
+description: "Retrieve store information, currencies, settings, features, and banners using sdk.store."
+---
+
+The `sdk.store` namespace provides methods to fetch store metadata, configuration, and display content. All methods are public and do not require authentication.
+
+## Methods
+
+### `store.get(params?)`
+
+Retrieve the store's basic information. Optionally include related data.
+
+```typescript
+const store = await sdk.store.get();
+
+// With optional includes
+const storeWithExtras = await sdk.store.get({
+  include: ['categories', 'pages', 'announcements']
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `include` | `string[]` | Optional. Related resources to include: `categories`, `pages`, `announcements`. |
+
+**Returns:** `Store`
+
+```typescript
+interface Store {
+  id: number;
+  name: string;
+  description?: string;
+  logo?: string;
+  currency: string;
+  settings?: Record<string, any>;
+}
+```
+
+---
+
+### `store.getCurrencies()`
+
+Get the list of currencies supported by the store.
+
+```typescript
+const currencies = await sdk.store.getCurrencies();
+// [{ code: 'SAR', symbol: 'ر.س', name: 'Saudi Riyal' }, ...]
+```
+
+**Returns:** `Array<{ code: string; symbol: string; name: string }>`
+
+---
+
+### `store.changeCurrency(currency)`
+
+Switch the active currency for the current session.
+
+```typescript
+await sdk.store.changeCurrency('USD');
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `currency` | `string` | Currency code (e.g., `'SAR'`, `'USD'`). |
+
+**Returns:** `void`
+
+---
+
+### `store.getSettings()`
+
+Retrieve the store's public settings (theme configuration, social links, contact info, etc.).
+
+```typescript
+const settings = await sdk.store.getSettings();
+```
+
+**Returns:** `Record<string, any>`
+
+---
+
+### `store.getFeatures()`
+
+Get the store's feature highlights, typically displayed on the homepage.
+
+```typescript
+const features = await sdk.store.getFeatures();
+// [{ id: 1, title: 'Fast Delivery', description: '...', icon: '...', sort_order: 0 }]
+```
+
+**Returns:**
+
+```typescript
+Array<{
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
+  sort_order: number;
+}>
+```
+
+---
+
+### `store.getBanners()`
+
+Get promotional banners configured for the store.
+
+```typescript
+const banners = await sdk.store.getBanners();
+// [{ id: 1, title: 'Summer Sale', image_url: '...', link_url: '/sale', sort_order: 0 }]
+```
+
+**Returns:**
+
+```typescript
+Array<{
+  id: number;
+  title: string;
+  description: string;
+  image_url: string;
+  link_url: string;
+  sort_order: number;
+}>
+```
+
+## Example: Store Landing Page
+
+```typescript
+// Fetch everything needed for a landing page in parallel
+const [store, banners, features, currencies] = await Promise.all([
+  sdk.store.get({ include: ['categories', 'pages'] }),
+  sdk.store.getBanners(),
+  sdk.store.getFeatures(),
+  sdk.store.getCurrencies(),
+]);
+```

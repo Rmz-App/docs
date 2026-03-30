@@ -1,0 +1,142 @@
+---
+title: "Vue 3"
+description: "Use the Storefront SDK with Vue 3 Composition API and Nuxt."
+---
+
+The SDK provides a Vue 3 composable and works with both the Composition API and Nuxt.
+
+## Vue Composable
+
+The SDK exports a `useStorefront` composable:
+
+```vue
+<script setup>
+import { useStorefront } from 'rmz-storefront-sdk';
+import { ref, onMounted } from 'vue';
+
+const sdk = useStorefront({
+  apiUrl: import.meta.env.VITE_RMZ_API_URL,
+  publicKey: import.meta.env.VITE_RMZ_PUBLIC_KEY,
+});
+
+const products = ref([]);
+const loading = ref(true);
+
+onMounted(async () => {
+  try {
+    const { data } = await sdk.value.products.getAll({ per_page: 12 });
+    products.value = data;
+  } finally {
+    loading.value = false;
+  }
+});
+</script>
+
+<template>
+  <div v-if="loading">Loading...</div>
+  <div v-else class="grid grid-cols-3 gap-4">
+    <div v-for="product in products" :key="product.id">
+      <h3>{{ product.name }}</h3>
+      <p>{{ product.price }}</p>
+    </div>
+  </div>
+</template>
+```
+
+## Direct Initialization
+
+You can also use `createStorefrontSDK` directly and provide it via Vue's dependency injection:
+
+```typescript
+// plugins/storefront.ts
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+import type { App } from 'vue';
+
+const sdk = createStorefrontSDK({
+  apiUrl: import.meta.env.VITE_RMZ_API_URL || 'https://front.rmz.gg/api',
+  publicKey: import.meta.env.VITE_RMZ_PUBLIC_KEY,
+});
+
+export const StorefrontKey = Symbol('storefront');
+
+export default {
+  install(app: App) {
+    app.provide(StorefrontKey, sdk);
+  }
+};
+```
+
+```typescript
+// main.ts
+import { createApp } from 'vue';
+import App from './App.vue';
+import storefrontPlugin from './plugins/storefront';
+
+createApp(App).use(storefrontPlugin).mount('#app');
+```
+
+```vue
+<!-- In any component -->
+<script setup>
+import { inject } from 'vue';
+import { StorefrontKey } from '@/plugins/storefront';
+
+const sdk = inject(StorefrontKey);
+</script>
+```
+
+## Cart Composable Example
+
+```typescript
+// composables/useCart.ts
+import { ref, readonly } from 'vue';
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+
+const sdk = createStorefrontSDK({
+  apiUrl: import.meta.env.VITE_RMZ_API_URL || 'https://front.rmz.gg/api',
+  publicKey: import.meta.env.VITE_RMZ_PUBLIC_KEY,
+});
+
+const cart = ref(null);
+const count = ref(0);
+const loading = ref(false);
+
+export function useCart() {
+  async function addItem(productId: number, quantity = 1) {
+    loading.value = true;
+    try {
+      const updated = await sdk.cart.addItem(productId, quantity);
+      cart.value = updated;
+      count.value = updated.count;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function refresh() {
+    const current = await sdk.cart.get();
+    cart.value = current;
+    count.value = current.count;
+  }
+
+  return {
+    cart: readonly(cart),
+    count: readonly(count),
+    loading: readonly(loading),
+    addItem,
+    refresh,
+  };
+}
+```
+
+## Environment Variables
+
+```bash
+# .env
+VITE_RMZ_API_URL=https://front.rmz.gg/api
+VITE_RMZ_PUBLIC_KEY=pk_your_public_key
+```
+
+<Note>
+Vite exposes environment variables prefixed with `VITE_` to client-side code. Never prefix secret keys with `VITE_`.
+</Note>

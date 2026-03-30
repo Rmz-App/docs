@@ -1,0 +1,185 @@
+---
+title: "Coupons"
+description: "Apply and remove coupon codes from the shopping cart."
+---
+
+## POST /cart/coupon
+
+Apply a coupon code to the cart.
+
+### Authentication
+
+Optional. Use `X-Cart-Token` for guest carts.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Cart-Token | {cart_token} | Yes (guest) |
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| coupon | string | Yes | Coupon code to apply |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/cart/coupon" \
+  -H "Content-Type: application/json" \
+  -H "X-Cart-Token: cart_abc123" \
+  -d '{"coupon": "SAVE10"}'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/coupon", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Cart-Token": "cart_abc123"
+  },
+  body: JSON.stringify({ coupon: "SAVE10" })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/cart/coupon",
+    headers={"X-Cart-Token": "cart_abc123"},
+    json={"coupon": "SAVE10"}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->post("https://front.rmz.gg/api/cart/coupon", ["coupon" => "SAVE10"]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+Returns the full cart contents with the discount applied.
+
+```json
+{
+  "success": true,
+  "data": {
+    "cart_token": "cart_abc123",
+    "items": [...],
+    "count": 2,
+    "subtotal": 399.98,
+    "discount_amount": 40.00,
+    "total": 359.98,
+    "total_before_tax": 359.98,
+    "coupon": { ... },
+    "currency": "SAR",
+    "tax": {
+      "enabled": false,
+      "rate": 0,
+      "rate_formatted": "0%",
+      "amount": 0,
+      "amount_formatted": "0.00 ر.س",
+      "country_code": null,
+      "country_name": null
+    }
+  },
+  "message": "Coupon applied successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Invalid coupon, expired, usage limit reached, minimum order not met, or coupon not applicable to cart items |
+| 422 | Validation error (missing coupon code) |
+
+---
+
+## DELETE /cart/coupon
+
+Remove the applied coupon from the cart.
+
+### Authentication
+
+Optional. Use `X-Cart-Token` for guest carts.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Cart-Token | {cart_token} | Yes (guest) |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://front.rmz.gg/api/cart/coupon" \
+  -H "X-Cart-Token: cart_abc123"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/coupon", {
+  method: "DELETE",
+  headers: { "X-Cart-Token": "cart_abc123" }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.delete("https://front.rmz.gg/api/cart/coupon", headers={
+    "X-Cart-Token": "cart_abc123"
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->delete("https://front.rmz.gg/api/cart/coupon");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+Returns the full cart contents with the discount removed.
+
+```json
+{
+  "success": true,
+  "data": {
+    "cart_token": "cart_abc123",
+    "items": [...],
+    "count": 2,
+    "subtotal": 399.98,
+    "discount_amount": 0,
+    "total": 399.98,
+    "total_before_tax": 399.98,
+    "coupon": null,
+    "currency": "SAR",
+    "tax": {
+      "enabled": false,
+      "rate": 0,
+      "rate_formatted": "0%",
+      "amount": 0,
+      "amount_formatted": "0.00 ر.س",
+      "country_code": null,
+      "country_name": null
+    }
+  },
+  "message": "Coupon removed successfully"
+}
+```
+
+<Tip>
+Coupons are re-validated at checkout time. If a coupon becomes invalid between cart and checkout (e.g., it expires or reaches its usage limit), the checkout will fail with a message indicating the coupon was removed.
+</Tip>

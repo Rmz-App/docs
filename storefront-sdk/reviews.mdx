@@ -1,0 +1,108 @@
+---
+title: "Reviews"
+description: "Retrieve store reviews, filter by rating, submit product reviews, and view statistics using sdk.reviews."
+---
+
+The `sdk.reviews` namespace provides methods to fetch store-wide reviews, get review statistics, and submit new reviews. Listing reviews is public; submitting a review requires authentication.
+
+## Methods
+
+### `reviews.getAll(params?)`
+
+Get a paginated list of store reviews, optionally filtered by rating.
+
+```typescript
+const { data: reviews, pagination } = await sdk.reviews.getAll({
+  page: 1,
+  per_page: 10,
+  rating: 5 // only 5-star reviews
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `page` | `number` | Page number |
+| `per_page` | `number` | Reviews per page |
+| `rating` | `number` | Filter by rating (1-5) |
+
+**Returns:** `{ data: Review[]; pagination?: Pagination }`
+
+---
+
+### `reviews.getRecent(limit?)`
+
+Get the most recent reviews.
+
+```typescript
+const recent = await sdk.reviews.getRecent(6);
+```
+
+**Parameters:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `limit` | `number` | `6` | Number of reviews to return |
+
+**Returns:** `Review[]`
+
+---
+
+### `reviews.submit(productId, data)`
+
+Submit a review for a product. Requires authentication.
+
+```typescript
+const review = await sdk.reviews.submit(42, {
+  rating: 5,
+  comment: 'Great product, highly recommended!'
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `productId` | `number` | Product to review |
+| `data.rating` | `number` | Rating from 1 to 5 |
+| `data.comment` | `string` | Review text |
+
+**Returns:** `Review`
+
+---
+
+### `reviews.getStats()`
+
+Get aggregate review statistics for the store.
+
+```typescript
+const stats = await sdk.reviews.getStats();
+```
+
+**Returns:** Review statistics object (varies by store configuration).
+
+## Types
+
+```typescript
+interface Review {
+  id: number;
+  rating: number;
+  comment: string;
+  reviewer: {
+    id: number;
+    name: string;
+    email?: string;
+  } | null;
+  product?: {
+    id: number;
+    name: string;
+    slug: string;
+  } | null;
+  created_at: string;
+}
+```
+
+<Note>
+You can also fetch reviews for a specific product using `sdk.products.getReviews(productId)`. See [Products](/storefront-sdk/products).
+</Note>

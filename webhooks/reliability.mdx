@@ -1,0 +1,134 @@
+---
+title: "Reliability & Retries"
+description: "How RMZ handles webhook delivery failures, retries, and logging."
+---
+
+RMZ uses [Spatie Webhook Server](https://github.com/spatie/laravel-webhook-server) under the hood for reliable webhook delivery. This page covers the retry strategy, timeouts, and how delivery status is tracked.
+
+## Timeout
+
+Each webhook delivery attempt has a **3-second timeout**. If your server does not respond within 3 seconds, the attempt is marked as failed and may be retried.
+
+<Tip>
+  Return a 200 response immediately and process the webhook payload asynchronously (e.g., in a background job). This prevents timeouts for heavy processing.
+</Tip>
+
+## Retry Strategy
+
+Failed deliveries are retried using an **exponential backoff** strategy. The delay between attempts increases exponentially:
+
+| Attempt | Approximate Delay |
+|---------|-------------------|
+| 1st retry | ~10 seconds |
+| 2nd retry | ~100 seconds |
+| 3rd retry | ~1,000 seconds (~17 min) |
+| 4th retry | ~10,000 seconds (~2.8 hrs) |
+
+### Configurable Retries
+
+When creating a webhook, you choose the maximum number of tries (1 to 5):
+
+| Tries Setting | Behavior |
+|---------------|----------|
+| 1 | Single attempt, no retries |
+| 2 | 1 initial attempt + 1 retry |
+| 3 | 1 initial attempt + 2 retries |
+| 4 | 1 initial attempt + 3 retries |
+| 5 | 1 initial attempt + 4 retries |
+
+<Note>
+  The `tries` setting includes the initial attempt. Setting tries to `3` means 1 initial attempt and 2 retries for a total of 3 delivery attempts.
+</Note>
+
+## Success Criteria
+
+A delivery is considered **successful** when your server responds with any `2xx` HTTP status code (200, 201, 202, etc.).
+
+A delivery is considered **failed** when:
+- Your server responds with a non-2xx status code (4xx, 5xx)
+- The connection times out (exceeds 3 seconds)
+- The connection is refused or DNS resolution fails
+
+## Delivery Logging
+
+Every webhook delivery attempt is logged with the following information:
+
+| Field | Description |
+|-------|-------------|
+| `uri` | The destination URL |
+| `payload` | The webhook payload (encrypted at rest) |
+| `status_code` | HTTP response status code (0 if no response received) |
+| `response` | Response body from your server |
+| `headers` | Response headers |
+| `is_pending` | `true` while delivery is in progress |
+| `is_error` | `true` if the final attempt failed |
+
+<Note>
+  Webhook payloads are encrypted at rest in the database for security. The `X-RMZ-REQUEST-ID` header value corresponds to the log entry ID.
+</Note>
+
+## Automatic Disabling of Failing Webhooks
+
+RMZ periodically evaluates webhook delivery history and automatically disables webhooks that are consistently failing. The default criteria are:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| **Failure rate threshold** | 80% | Webhooks with a failure rate at or above this percentage are disabled |
+| **Minimum requests** | 5 | A webhook must have at least this many delivery attempts before it can be evaluated |
+| **Lookback period** | 3 months | Only delivery attempts within this window are considered |
+
+A delivery is counted as failed if `is_error` is true or the response status code is outside the 2xx range.
+
+When a webhook is disabled, the store owner can re-enable it from the dashboard after fixing the endpoint issue.
+
+## SSL Verification
+
+By default, RMZ verifies the SSL certificate of your webhook endpoint. Self-signed certificates or invalid certificates will cause delivery to fail.
+
+<Warning>
+  Always use HTTPS for your webhook endpoints. While the webhook will attempt delivery to HTTP URLs, sensitive order data (including customer details and digital codes) is included in the payload.
+</Warning>
+
+## Idempotency
+
+Webhooks may be delivered more than once due to retries or network issues. Design your webhook handler to be **idempotent** — processing the same event twice should produce the same result.
+
+Use the `X-RMZ-REQUEST-ID` header to detect duplicate deliveries:
+
+```javascript
+const processedRequests = new Set();
+
+app.post("/webhooks/rmz", (req, res) => {
+  const requestId = req.headers["x-rmz-request-id"];
+
+  if (processedRequests.has(requestId)) {
+    // Already processed, return success to prevent further retries
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  // Process the webhook...
+  processedRequests.add(requestId);
+
+  res.status(200).json({ received: true });
+});
+```
+
+<Tip>
+  In production, store processed request IDs in a database or Redis rather than in-memory. Use a TTL of 7 days to automatically clean up old entries.
+</Tip>
+
+## Best Practices
+
+1. **Respond quickly.** Return `200` immediately and process asynchronously. Do not perform slow operations (API calls, database writes, email sending) before responding.
+
+2. **Handle retries.** Use the `X-RMZ-REQUEST-ID` header for deduplication. Store processed IDs to avoid duplicate processing.
+
+3. **Use HTTPS.** Protect sensitive customer and order data in transit.
+
+4. **Verify signatures.** When signing is enabled, always [verify the signature](/webhooks/signature-verification) before processing the payload.
+
+5. **Set appropriate retry counts.** Use higher retry counts (3-5) for critical integrations and lower counts (1-2) for non-critical notifications.
+
+6. **Monitor delivery status.** Check the webhook logs in your dashboard to identify persistent failures. Fix endpoint issues promptly to avoid missing events.
+
+7. **Handle all status codes.** If your server returns a non-2xx status intentionally (e.g., `422` for an invalid payload), be aware that RMZ will retry the delivery.

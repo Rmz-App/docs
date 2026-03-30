@@ -1,0 +1,93 @@
+---
+title: Merchant API Overview
+description: Programmatically manage your RMZ store with the Merchant API.
+---
+
+# Merchant API
+
+The Merchant API (codenamed **Shawarma**) lets you manage your RMZ store programmatically. Use it to fetch store data, manage orders, list products, and pull statistics into external systems.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Base URL
+
+```
+https://merchant-api.rmz.gg/shawarma
+```
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Rate Limiting
+
+<Snippet file="rate-limit-note.mdx" />
+
+## Response Format
+
+All successful responses follow this structure:
+
+```json
+{
+  "message": "Success message or null",
+  "data": { },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+Error responses include `error: true`:
+
+```json
+{
+  "message": "Error description",
+  "data": null,
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999,
+  "error": true
+}
+```
+
+## Pagination
+
+<Snippet file="pagination-note.mdx" />
+
+## Idempotency
+
+The `POST /orders` endpoint implements idempotency to prevent duplicate orders. Duplicate requests within 5 minutes return the existing checkout or order instead of creating a new one. Idempotency is based on a hash of the request content.
+
+## Available Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/store` | Get store information |
+| `GET` | `/store/statics` | Get store statistics |
+| `GET` | `/orders` | List orders (paginated) |
+| `POST` | `/orders` | Create a new order |
+| `GET` | `/orders/{id}` | Get order details |
+| `PUT` | `/orders/{id}` | Update order status |
+| `GET` | `/products` | List products (paginated) |
+| `GET` | `/products/{id}` | Get product details |
+| `GET` | `/categories` | List categories (paginated) |
+| `GET` | `/subscriptions` | List subscriptions (paginated) |
+| `GET` | `/subscriptions/{id}` | Get subscription details |
+
+## Order Statuses
+
+| Status Code | Description | Arabic |
+|-------------|-------------|--------|
+| `1` | Awaiting Payment | بإنتظار الدفع |
+| `2` | Under Review | قيد المراجعة |
+| `3` | In Progress | قيد التنفيذ |
+| `4` | Completed | مكتمل |
+| `5` | Cancelled | ملغي |
+| `6` | Refunded | مسترجع |
+
+## Product Types
+
+| Type | Description |
+|------|-------------|
+| `product` | Digital product |
+| `code` | Digital codes/keys |
+| `service` | Service-based product |
+| `subscription` | Recurring subscription |

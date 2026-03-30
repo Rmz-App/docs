@@ -1,0 +1,503 @@
+---
+title: "OTP Authentication Flow"
+description: "Authenticate customers using OTP verification via phone number or email."
+---
+
+The Storefront API uses OTP-based authentication. Customers receive a 4-digit verification code via SMS or email, verify it, and receive a Bearer token for authenticated requests.
+
+## Flow Overview
+
+1. **Start** -- Send phone number or email to receive an OTP code
+2. **Verify** -- Submit the OTP code to verify identity
+3. **Complete** -- (New customers only) Provide name and email to finish registration
+
+---
+
+## POST /auth/start
+
+Start an authentication session. Auto-detects the type based on provided fields.
+
+### Authentication
+
+None required (guest endpoint).
+
+### Request
+
+#### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Content-Type | application/json | Yes |
+
+#### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| country_code | numeric | Yes (phone auth) | Country dial code (1-999, e.g., `966`) |
+| phone | string | Yes (phone auth) | Phone number without country code (digits only) |
+| email | string | Yes (email auth) | Customer email address |
+
+<Note>
+Provide either `country_code` + `phone` for phone authentication, or `email` for email authentication. The API auto-detects which flow to use.
+</Note>
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/auth/start" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "country_code": "966",
+    "phone": "501234567"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/auth/start", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    country_code: "966",
+    phone: "501234567"
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post("https://front.rmz.gg/api/auth/start", json={
+    "country_code": "966",
+    "phone": "501234567"
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::post("https://front.rmz.gg/api/auth/start", [
+    "country_code" => "966",
+    "phone" => "501234567"
+]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "session_token": "auth_abc123xyz"
+  },
+  "message": "Verification code sent successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Message | Description |
+|--------|---------|-------------|
+| 422 | *(validation errors)* | Missing or invalid phone/email fields |
+| 429 | Too many authentication attempts today. Please try again tomorrow | 50 sessions/day per IP exceeded |
+| 429 | Too many authentication attempts for this phone number today | 10 sessions/day per phone number exceeded |
+| 500 | Store not found in context | Store could not be resolved |
+
+---
+
+## POST /auth/phone/start
+
+Dedicated phone authentication endpoint. Behaves identically to `POST /auth/start` with phone parameters but enforces phone-specific validation.
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| country_code | numeric | Yes | Country dial code (1-999) |
+| phone | string | Yes | Phone number (digits only) |
+
+---
+
+## POST /auth/initiate
+
+Legacy authentication endpoint. Accepts a `type` field and nested `data` object instead of top-level fields.
+
+### Authentication
+
+None required (guest endpoint).
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| type | string | Yes | Authentication type. Currently only `phone` is supported |
+| data.country | string | Yes (phone) | Country dial code (must be a supported Arab country code) |
+| data.phone | string | Yes (phone) | Phone number (6-12 digits) |
+| data.email | string | Yes (email) | Customer email address |
+
+### Response
+
+Same as `POST /auth/start`.
+
+<Warning>
+This is a legacy endpoint maintained for backward compatibility. New integrations should use `POST /auth/start` instead.
+</Warning>
+
+---
+
+## POST /auth/verify
+
+Verify the OTP code sent to the customer's phone or email.
+
+### Authentication
+
+None required (guest endpoint).
+
+### Request
+
+#### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Content-Type | application/json | Yes |
+
+#### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| session_token | string | No | Session token from the start step |
+| code | integer | Yes | The 4-digit OTP code |
+| otp | integer | No | Alias for `code` (backward compatibility) |
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/auth/verify" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "auth_abc123xyz",
+    "code": 1234
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/auth/verify", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    session_token: "auth_abc123xyz",
+    code: 1234
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/auth/verify", json={
+    "session_token": "auth_abc123xyz",
+    "code": 1234
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::post("https://front.rmz.gg/api/auth/verify", [
+    "session_token" => "auth_abc123xyz",
+    "code" => 1234
+]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Existing Customer (200)
+
+When the customer already exists in this store:
+
+```json
+{
+  "success": true,
+  "data": {
+    "type": "authenticated",
+    "token": "1|abc123xyz...",
+    "cart_token": "cart_xyz789",
+    "customer": {
+      "id": 123,
+      "first_name": "Ahmed",
+      "last_name": "Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567",
+      "country_code": "966"
+    }
+  },
+  "message": "Authentication successful"
+}
+```
+
+#### Customer From Another Store (200)
+
+When the customer exists in another store but not in this one, a new customer record is automatically created for this store:
+
+```json
+{
+  "success": true,
+  "data": {
+    "type": "new_customer",
+    "token": "1|abc123xyz...",
+    "cart_token": "cart_xyz789",
+    "customer": {
+      "id": 456,
+      "first_name": "Ahmed",
+      "last_name": "Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567",
+      "country_code": "966"
+    }
+  },
+  "message": "Authentication successful"
+}
+```
+
+<Note>
+The `type` field can be either `"authenticated"` (existing customer in this store) or `"new_customer"` (auto-created from another store). Both cases return a token and the customer can proceed immediately.
+</Note>
+
+#### New Customer (200)
+
+When the phone/email is not registered in any store, the response indicates registration is required:
+
+```json
+{
+  "success": true,
+  "data": {
+    "type": "new",
+    "requires_registration": true,
+    "session_token": "auth_abc123xyz"
+  },
+  "message": "Please complete your registration"
+}
+```
+
+<Warning>
+When `requires_registration` is `true`, you must call `POST /auth/complete` to finish creating the customer account.
+</Warning>
+
+#### Error Responses
+
+| Status | Message | Description |
+|--------|---------|-------------|
+| 400 | Please restart the authentication process | Invalid or missing session |
+| 400 | Verification code expired. Please restart the process | Session has expired |
+| 400 | Too many failed attempts. Please restart the process | Max verification attempts reached |
+| 400 | Invalid verification code | Wrong OTP code |
+| 429 | Too many verification attempts. Please wait before trying again | Rate limit exceeded (5 attempts/min per IP) |
+| 429 | Please wait {N} seconds before trying again | Progressive cooldown active |
+
+---
+
+## POST /auth/phone/verify
+
+Dedicated phone verification endpoint. Behaves identically to `POST /auth/verify`.
+
+---
+
+## POST /auth/resend
+
+Resend the OTP code for an active session.
+
+### Authentication
+
+None required (guest endpoint).
+
+### Request
+
+#### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| session_token | string | Yes | Session token from the start step |
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/auth/resend" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "auth_abc123xyz"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/auth/resend", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ session_token: "auth_abc123xyz" })
+});
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/auth/resend", json={
+    "session_token": "auth_abc123xyz"
+})
+```
+
+```php PHP
+$response = Http::post("https://front.rmz.gg/api/auth/resend", [
+    "session_token" => "auth_abc123xyz"
+]);
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "session_token": "auth_abc123xyz"
+  },
+  "message": "Verification code sent successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Message | Description |
+|--------|---------|-------------|
+| 400 | Invalid session. Please restart the authentication process | Session token not found |
+| 400 | Session expired. Please restart the authentication process | Session has expired |
+| 429 | Please wait 30 seconds before requesting a new code | Must wait 30 seconds between resends |
+| 429 | Too many resend attempts. Please wait before trying again | 3 resends per 10 minutes exceeded |
+
+---
+
+## POST /auth/phone/resend
+
+Dedicated phone resend endpoint. Behaves identically to `POST /auth/resend`.
+
+---
+
+## POST /auth/complete
+
+Complete registration for new customers after OTP verification.
+
+### Authentication
+
+None required (guest endpoint). Requires a verified session token.
+
+### Request
+
+#### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| session_token | string | Yes | Verified session token |
+| email | string | Yes | Customer email (must be unique per store) |
+| firstName | string | Yes | Customer first name |
+| lastName | string | Yes | Customer last name |
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/auth/complete" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "auth_abc123xyz",
+    "email": "ahmed@example.com",
+    "firstName": "Ahmed",
+    "lastName": "Ali"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/auth/complete", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    session_token: "auth_abc123xyz",
+    email: "ahmed@example.com",
+    firstName: "Ahmed",
+    lastName: "Ali"
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/auth/complete", json={
+    "session_token": "auth_abc123xyz",
+    "email": "ahmed@example.com",
+    "firstName": "Ahmed",
+    "lastName": "Ali"
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::post("https://front.rmz.gg/api/auth/complete", [
+    "session_token" => "auth_abc123xyz",
+    "email" => "ahmed@example.com",
+    "firstName" => "Ahmed",
+    "lastName" => "Ali"
+]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "type": "registered",
+    "token": "1|abc123xyz...",
+    "customer": {
+      "id": 456,
+      "first_name": "Ahmed",
+      "last_name": "Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567",
+      "country_code": "966"
+    }
+  },
+  "message": "Account created and authenticated successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Message | Description |
+|--------|---------|-------------|
+| 400 | Please restart the authentication process | Session not found, not verified, or not eligible for registration |
+| 400 | Session expired. Please restart the process | Session has expired |
+| 400 | Customer already exists. Please login with existing credentials | Customer record already exists for this store |
+| 422 | *(validation errors)* | Email already in use in this store, or missing required fields |
+
+---
+
+## Rate Limits Summary
+
+| Action | Limit | Window |
+|--------|-------|--------|
+| Start authentication | 50 per IP | 24 hours |
+| Phone-specific start | 10 per phone number | 24 hours |
+| Verify OTP | 5 per IP | 1 minute |
+| Resend OTP | 3 per identifier | 10 minutes |
+| Resend cooldown | 1 per session | 30 seconds |
+
+## Session Expiry
+
+OTP sessions expire after **5 minutes**. Expired sessions are automatically cleaned up. If a session expires, the customer must restart the authentication flow from `POST /auth/start`.

@@ -1,0 +1,245 @@
+---
+title: "Cart"
+description: "Manage the shopping cart — add items, apply coupons, validate, and get summaries using sdk.cart."
+---
+
+The `sdk.cart` namespace manages the shopping cart. Cart operations work for both authenticated customers and guest visitors. The SDK automatically handles cart token management — tokens are extracted from API responses and sent with subsequent requests via the `X-Cart-Token` header.
+
+## Methods
+
+### `cart.get()`
+
+Retrieve the current cart contents.
+
+```typescript
+const cart = await sdk.cart.get();
+console.log(cart.items);   // CartItem[]
+console.log(cart.total);   // number
+console.log(cart.currency); // string
+```
+
+**Returns:** `Cart`
+
+```typescript
+interface Cart {
+  items: CartItem[];
+  count: number;
+  subtotal: number;
+  total: number;
+  currency: string;
+}
+
+interface CartItem {
+  id: number;
+  product_id: number;
+  product: Product;
+  quantity: number;
+  price: number;
+  total: number;
+}
+```
+
+---
+
+### `cart.addItem(productId, quantity?, options?)`
+
+Add a product to the cart.
+
+```typescript
+// Add 1 unit
+const cart = await sdk.cart.addItem(productId);
+
+// Add 2 units with custom fields
+const cart = await sdk.cart.addItem(productId, 2, {
+  fields: { color: 'red', size: 'L' },
+  notice: 'Gift wrap please'
+});
+```
+
+**Parameters:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `productId` | `number` | — | Product ID to add |
+| `quantity` | `number` | `1` | Quantity to add |
+| `options.fields` | `Record<string, any>` | — | Custom product fields (variants, options) |
+| `options.notice` | `string` | — | Special instructions or notes |
+
+**Returns:** `Cart`
+
+---
+
+### `cart.updateItem(itemId, quantity)`
+
+Update the quantity of a cart item.
+
+```typescript
+await sdk.cart.updateItem(itemId, 3);
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `itemId` | `string` | Cart item ID |
+| `quantity` | `number` | New quantity |
+
+**Returns:** `Cart`
+
+---
+
+### `cart.removeItem(itemId)`
+
+Remove an item from the cart.
+
+```typescript
+await sdk.cart.removeItem(itemId);
+```
+
+**Returns:** `Cart`
+
+---
+
+### `cart.clear()`
+
+Remove all items from the cart and clear the stored cart token.
+
+```typescript
+await sdk.cart.clear();
+```
+
+**Returns:** `void`
+
+---
+
+### `cart.getCount()`
+
+Get the number of items in the cart without fetching the full cart.
+
+```typescript
+const count = await sdk.cart.getCount();
+// 3
+```
+
+**Returns:** `number`
+
+---
+
+### `cart.applyCoupon(code)`
+
+Apply a discount coupon to the cart.
+
+```typescript
+const cart = await sdk.cart.applyCoupon('DISCOUNT10');
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | `string` | Coupon code |
+
+**Returns:** `Cart`
+
+<Note>
+If the coupon is invalid or expired, the API returns an error. Wrap this call in a try/catch to display the error message to the customer.
+</Note>
+
+---
+
+### `cart.removeCoupon()`
+
+Remove the currently applied coupon.
+
+```typescript
+const cart = await sdk.cart.removeCoupon();
+```
+
+**Returns:** `Cart`
+
+---
+
+### `cart.validate()`
+
+Check whether the current cart contents are valid for checkout (e.g., all items in stock, no conflicts).
+
+```typescript
+const validation = await sdk.cart.validate();
+if (!validation.valid) {
+  console.error('Cart issues:', validation.errors);
+}
+```
+
+**Returns:**
+
+```typescript
+{ valid: boolean; errors?: string[] }
+```
+
+---
+
+### `cart.getSummary()`
+
+Get the cart totals breakdown without fetching individual items.
+
+```typescript
+const summary = await sdk.cart.getSummary();
+// { subtotal: 100, tax: 15, shipping: 0, discount: 10, total: 105 }
+```
+
+**Returns:**
+
+```typescript
+{
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  discount: number;
+  total: number;
+}
+```
+
+## Cart Token Management
+
+The SDK manages cart tokens automatically, but you can also control them manually:
+
+```typescript
+// Set a cart token (e.g., restored from localStorage)
+sdk.setCartToken('cart_abc123');
+
+// Read the current cart token
+const token = sdk.getCartToken();
+
+// Clear the cart token
+sdk.setCartToken(null);
+```
+
+<Tip>
+For guest users, persist the cart token in `localStorage` so the cart survives page reloads:
+
+```typescript
+// After any cart operation
+const token = sdk.getCartToken();
+if (token) localStorage.setItem('rmz_cart_token', token);
+
+// On app initialization
+const saved = localStorage.getItem('rmz_cart_token');
+if (saved) sdk.setCartToken(saved);
+```
+</Tip>
+
+## Example: Add to Cart Flow
+
+```typescript
+try {
+  const cart = await sdk.cart.addItem(product.id, quantity, {
+    fields: selectedOptions,
+  });
+
+  // Cart token is automatically stored by the SDK
+  console.log(`Cart now has ${cart.count} items, total: ${cart.total} ${cart.currency}`);
+} catch (error) {
+  // Handle errors (out of stock, invalid product, etc.)
+  console.error('Failed to add item:', error.message);
+}
+```

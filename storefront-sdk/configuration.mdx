@@ -1,0 +1,198 @@
+---
+title: "Configuration"
+description: "All configuration options for the Storefront SDK — API URL, keys, timeouts, retries, caching, and logging."
+---
+
+The `createStorefrontSDK()` function accepts a configuration object that controls authentication, network behavior, and debugging.
+
+## Configuration Interface
+
+```typescript
+interface StorefrontConfig {
+  apiUrl: string;                              // API base URL
+  publicKey: string;                           // Public key for store identification
+  secretKey?: string;                          // Secret key (server-side only, enables HMAC)
+  environment?: 'production' | 'development';  // Default: 'production'
+  version?: string;                            // API version (default: '1.0.0')
+  timeout?: number;                            // Request timeout in ms (default: 30000)
+  maxRetries?: number;                         // Maximum retry attempts (default: 3)
+  retryDelay?: number;                         // Delay between retries in ms (default: 1000)
+  enableLogging?: boolean;                     // Enable debug logging (default: false)
+}
+```
+
+## Options Reference
+
+### `apiUrl`
+
+**Required.** The base URL of the Storefront API.
+
+The default and most common value is `https://front.rmz.gg/api`. This is the production endpoint used by all RMZ stores.
+
+```typescript
+const sdk = createStorefrontSDK({
+  apiUrl: 'https://front.rmz.gg/api',
+  publicKey: 'pk_...',
+});
+```
+
+---
+
+### `publicKey`
+
+**Required.** Your store's public key. Found in the store dashboard under API settings. This key is safe to expose in client-side code.
+
+---
+
+### `secretKey`
+
+**Optional. Server-side only.** Your store's secret key. When provided, the SDK generates HMAC-SHA256 signatures for every request. Required for Management API endpoints.
+
+<Warning>
+Never include `secretKey` in client-side code. The SDK will log a warning if it detects a secret key in a browser environment.
+</Warning>
+
+---
+
+### `environment`
+
+**Optional.** Default: `'production'`.
+
+Controls environment-specific behavior. In `'development'` mode, error messages may be more verbose.
+
+---
+
+### `timeout`
+
+**Optional.** Default: `30000` (30 seconds).
+
+Maximum time in milliseconds to wait for a response before the request is aborted.
+
+```typescript
+const sdk = createStorefrontSDK({
+  apiUrl: 'https://front.rmz.gg/api',
+  publicKey: 'pk_...',
+  timeout: 15000, // 15 seconds
+});
+```
+
+---
+
+### `maxRetries`
+
+**Optional.** Default: `3`.
+
+Number of times to retry a failed request before throwing an error. Retries are triggered on network errors and 5xx server errors.
+
+---
+
+### `retryDelay`
+
+**Optional.** Default: `1000` (1 second).
+
+Delay in milliseconds between retry attempts.
+
+---
+
+### `enableLogging`
+
+**Optional.** Default: `false`.
+
+When enabled, the SDK logs internal operations to the console (initialization, token updates, request details). Useful during development.
+
+```typescript
+const sdk = createStorefrontSDK({
+  apiUrl: 'https://front.rmz.gg/api',
+  publicKey: 'pk_...',
+  enableLogging: true, // logs to console
+});
+```
+
+## Singleton Pattern
+
+The SDK uses a singleton pattern internally. Calling `createStorefrontSDK()` with the same `apiUrl` and `publicKey` returns the same instance:
+
+```typescript
+const sdk1 = createStorefrontSDK(config);
+const sdk2 = createStorefrontSDK(config);
+// sdk1 === sdk2 (same instance)
+```
+
+This prevents redundant initialization and ensures consistent state (auth tokens, cart tokens) across your application.
+
+## Environment Variables
+
+Recommended environment variable setup for common frameworks:
+
+<CodeGroup>
+
+```bash Next.js (.env.local)
+# Client-side (prefixed with NEXT_PUBLIC_)
+NEXT_PUBLIC_RMZ_API_URL=https://front.rmz.gg/api
+NEXT_PUBLIC_RMZ_PUBLIC_KEY=pk_your_public_key
+
+# Server-side
+RMZ_API_URL=https://front.rmz.gg/api
+RMZ_PUBLIC_KEY=pk_your_public_key
+RMZ_SECRET_KEY=sk_your_secret_key
+```
+
+```bash Vite (.env)
+VITE_RMZ_API_URL=https://front.rmz.gg/api
+VITE_RMZ_PUBLIC_KEY=pk_your_public_key
+```
+
+```bash Node.js (.env)
+RMZ_API_URL=https://front.rmz.gg/api
+RMZ_PUBLIC_KEY=pk_your_public_key
+RMZ_SECRET_KEY=sk_your_secret_key
+```
+
+</CodeGroup>
+
+## Full Example
+
+```typescript
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+
+// Client-side (Next.js)
+const clientSDK = createStorefrontSDK({
+  apiUrl: process.env.NEXT_PUBLIC_RMZ_API_URL || 'https://front.rmz.gg/api',
+  publicKey: process.env.NEXT_PUBLIC_RMZ_PUBLIC_KEY!,
+  environment: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+  timeout: 15000,
+  maxRetries: 2,
+  enableLogging: process.env.NODE_ENV === 'development',
+});
+
+// Server-side (Next.js API route)
+const serverSDK = createStorefrontSDK({
+  apiUrl: process.env.RMZ_API_URL || 'https://front.rmz.gg/api',
+  publicKey: process.env.RMZ_PUBLIC_KEY!,
+  secretKey: process.env.RMZ_SECRET_KEY!,
+  environment: 'production',
+  timeout: 30000,
+  maxRetries: 3,
+});
+```
+
+## Error Handling
+
+The SDK throws standard JavaScript errors. Handle them with try/catch:
+
+```typescript
+try {
+  const products = await sdk.products.getAll();
+} catch (error) {
+  if (error.message.includes('401')) {
+    // Authentication error
+  } else if (error.message.includes('429')) {
+    // Rate limit exceeded
+  } else if (error.message.includes('timeout')) {
+    // Request timed out
+  } else {
+    // Other error
+    console.error('API error:', error.message);
+  }
+}
+```

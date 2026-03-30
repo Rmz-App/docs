@@ -1,0 +1,111 @@
+---
+title: "Checkout"
+description: "Create checkout sessions and handle payment results using sdk.checkout."
+---
+
+The `sdk.checkout` namespace handles the checkout flow. After the customer's cart is ready, create a checkout session to initiate payment. Once payment is complete, retrieve the result.
+
+## Methods
+
+### `checkout.create()`
+
+Create a new checkout session from the current cart. The response varies based on the order total:
+
+```typescript
+const result = await sdk.checkout.create();
+
+if (result.type === 'free_order') {
+  // No payment needed — order is created immediately
+  console.log('Order created:', result.order_id);
+} else if (result.type === 'payment_required') {
+  // Redirect the customer to the payment page
+  window.location.href = result.checkout_url;
+}
+```
+
+**Returns:**
+
+```typescript
+{
+  type: 'free_order' | 'payment_required';
+  checkout_id?: string;       // Payment session ID
+  checkout_url?: string;      // URL to redirect customer to
+  order_id?: number;          // Order ID (for free orders)
+  amount?: number;            // Payment amount
+  redirect_url?: string;      // Post-payment redirect URL
+}
+```
+
+<Note>
+For free orders (100% discount, free products), the order is created immediately and no payment redirect is needed. For paid orders, redirect the customer to `checkout_url` to complete payment.
+</Note>
+
+---
+
+### `checkout.getResult(sessionId)`
+
+After the customer returns from payment, check the result of the checkout session.
+
+```typescript
+const { status, order } = await sdk.checkout.getResult(sessionId);
+
+if (status === 'completed') {
+  console.log('Payment successful! Order:', order.id);
+} else {
+  console.log('Payment status:', status);
+}
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sessionId` | `string` | The `checkout_id` returned by `checkout.create()` |
+
+**Returns:**
+
+```typescript
+{
+  status: string;    // e.g., 'completed', 'pending', 'failed'
+  order?: Order;     // The created order (if completed)
+}
+```
+
+## Complete Checkout Flow
+
+```typescript
+// 1. Validate the cart
+const validation = await sdk.cart.validate();
+if (!validation.valid) {
+  throw new Error('Cart validation failed: ' + validation.errors?.join(', '));
+}
+
+// 2. Create checkout session
+const result = await sdk.checkout.create();
+
+// 3. Handle the result
+switch (result.type) {
+  case 'free_order':
+    // Navigate to order confirmation
+    router.push(`/orders/${result.order_id}`);
+    break;
+
+  case 'payment_required':
+    // Redirect to payment gateway
+    window.location.href = result.checkout_url!;
+    break;
+}
+
+// 4. On the return/callback page, check the result
+const sessionId = new URLSearchParams(window.location.search).get('session_id');
+if (sessionId) {
+  const { status, order } = await sdk.checkout.getResult(sessionId);
+  if (status === 'completed') {
+    // Show success page
+  }
+}
+```
+
+<Warning>
+Ensure the customer is either authenticated (Bearer token set) or has a valid cart token before calling `checkout.create()`. The API needs to identify the cart to process.
+</Warning>

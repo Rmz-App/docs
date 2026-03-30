@@ -1,0 +1,149 @@
+---
+title: "Courses"
+description: "Access purchased courses, track progress, view modules, and mark completion using sdk.courses."
+---
+
+The `sdk.courses` namespace provides access to digital courses purchased by the customer. All methods require authentication (Bearer token set via `sdk.setAuthToken()`).
+
+## Methods
+
+### `courses.getAll(params?)`
+
+Get a paginated list of courses available to the customer.
+
+```typescript
+const { data: courses, pagination } = await sdk.courses.getAll({
+  page: 1,
+  per_page: 10
+});
+```
+
+**Parameters:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | `number` | `1` | Page number |
+| `per_page` | `number` | `10` | Courses per page |
+
+**Returns:** `{ data: Course[]; pagination?: Pagination }`
+
+---
+
+### `courses.getById(id)`
+
+Get details for a specific course, including its modules.
+
+```typescript
+const course = await sdk.courses.getById(15);
+console.log(course.title);
+console.log(course.modules); // CourseModule[]
+```
+
+**Returns:** `Course`
+
+---
+
+### `courses.getProgress(courseId)`
+
+Get the customer's progress for a specific course.
+
+```typescript
+const progress = await sdk.courses.getProgress(15);
+console.log(`${progress.progress_percentage}% complete`);
+console.log(`${progress.completed_modules} of ${progress.total_modules} modules`);
+```
+
+**Returns:** `CourseProgress`
+
+---
+
+### `courses.getModule(courseId, moduleId)`
+
+Get the content of a specific module within a course.
+
+```typescript
+const module = await sdk.courses.getModule(15, 3);
+console.log(module.title);
+console.log(module.content);
+```
+
+**Returns:** `CourseModule`
+
+---
+
+### `courses.completeModule(courseId, moduleId)`
+
+Mark a module as completed.
+
+```typescript
+const result = await sdk.courses.completeModule(15, 3);
+if (result.success) {
+  console.log('Module completed!');
+}
+```
+
+**Returns:** `{ success: boolean }`
+
+## Legacy Customer Endpoints
+
+For backward compatibility, the SDK also provides these legacy methods that use the `/customer/courses` endpoints:
+
+```typescript
+// Get all customer courses
+const courses = await sdk.courses.getCustomerCourses();
+
+// Get a specific customer course
+const course = await sdk.courses.getCustomerCourse(15);
+
+// Get a module via the customer endpoint
+const module = await sdk.courses.getCustomerCourseModule(15, 3);
+```
+
+## Types
+
+```typescript
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  modules: CourseModule[];
+  progress?: CourseProgress;
+}
+
+interface CourseModule {
+  id: number;
+  title: string;
+  content: string;
+  order: number;
+  is_completed?: boolean;
+}
+
+interface CourseProgress {
+  course_id: number;
+  completed_modules: number;
+  total_modules: number;
+  progress_percentage: number;
+}
+```
+
+## Example: Course Player
+
+```typescript
+async function loadCoursePlayer(courseId: number) {
+  const [course, progress] = await Promise.all([
+    sdk.courses.getById(courseId),
+    sdk.courses.getProgress(courseId),
+  ]);
+
+  // Find the next uncompleted module
+  const nextModule = course.modules.find(m => !m.is_completed);
+
+  return { course, progress, nextModule };
+}
+
+async function completeAndAdvance(courseId: number, moduleId: number) {
+  await sdk.courses.completeModule(courseId, moduleId);
+  const progress = await sdk.courses.getProgress(courseId);
+  return progress;
+}
+```

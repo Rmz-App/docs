@@ -1,0 +1,226 @@
+---
+title: "Analytics Collection"
+description: "Collect pageview and custom analytics events from your storefront."
+---
+
+The Analytics Collection endpoints allow your custom storefront to send pageview, custom event, and interaction data to RMZ for store analytics. These endpoints run on a separate rate limit from the main Storefront API to ensure analytics traffic never blocks store requests.
+
+<Note>
+These endpoints are used internally by the RMZ analytics script (`rmz-analytics.js`) and the Storefront SDK. You can also call them directly from a custom storefront implementation.
+</Note>
+
+## Authentication
+
+No Bearer token or secret key is required. The store is identified from the request domain/origin (same as other Storefront API endpoints).
+
+## Rate Limits
+
+Analytics endpoints have their own per-IP rate limiting (separate from the main API):
+
+| Limit | Window |
+|-------|--------|
+| 120 events per IP | 1 minute |
+
+Batch requests count each event in the batch against the rate limit.
+
+---
+
+## POST /storefront/analytics/collect
+
+Submit a single analytics event.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| type | string | No | Event type: `pageview`, `event`, `outbound_click`. Default: `event` |
+| session_id | string | No | Session identifier (max 64 chars) |
+| visitor_id | string | No | Persistent visitor identifier (max 64 chars) |
+| url | string | No | Full page URL (max 2000 chars) |
+| path | string | No | Page path (max 500 chars) |
+| event_name | string | No | Custom event name (for `type: event`, max 100 chars) |
+| properties | object | No | Custom event properties (for `type: event`) |
+| title | string | No | Page title (for `type: pageview`, max 500 chars) |
+| referrer | string | No | Referrer URL (for `type: pageview`, max 2000 chars) |
+| screen_width | integer | No | Screen width in pixels (for `type: pageview`) |
+| destination | string | No | Outbound link URL (for `type: outbound_click`, max 2000 chars) |
+| text | string | No | Link text (for `type: outbound_click`, max 200 chars) |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/storefront/analytics/collect" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "pageview",
+    "session_id": "sess_abc123",
+    "visitor_id": "vis_xyz789",
+    "url": "https://mystore.com/products/game-key",
+    "path": "/products/game-key",
+    "title": "Premium Game Key - My Store",
+    "referrer": "https://google.com",
+    "screen_width": 1920
+  }'
+```
+
+```javascript JavaScript
+await fetch("https://front.rmz.gg/api/storefront/analytics/collect", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    type: "pageview",
+    session_id: "sess_abc123",
+    visitor_id: "vis_xyz789",
+    url: window.location.href,
+    path: window.location.pathname,
+    title: document.title,
+    referrer: document.referrer,
+    screen_width: window.innerWidth
+  })
+});
+```
+
+```python Python
+requests.post("https://front.rmz.gg/api/storefront/analytics/collect", json={
+    "type": "event",
+    "session_id": "sess_abc123",
+    "visitor_id": "vis_xyz789",
+    "event_name": "add_to_cart",
+    "properties": {"product_id": 101, "quantity": 1},
+    "url": "https://mystore.com/products/game-key",
+    "path": "/products/game-key"
+})
+```
+</CodeGroup>
+
+### Response
+
+#### Success (202)
+
+```json
+{
+  "status": "ok"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | `store_id` could not be resolved from request context |
+| 429 | Rate limit exceeded (120 events/min per IP) |
+
+<Note>
+The response uses a `202 Accepted` status code rather than `200 OK`, indicating the event has been accepted for processing. The response format uses `status` instead of the standard `success`/`data` wrapper used by other Storefront API endpoints.
+</Note>
+
+---
+
+## POST /storefront/analytics/collect/batch
+
+Submit multiple analytics events in a single request. Reduces HTTP overhead for high-traffic storefronts.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| events | array | Yes | Array of event objects (max 30 per batch). Each event has the same structure as the single collect endpoint body. |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/storefront/analytics/collect/batch" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "events": [
+      {
+        "type": "pageview",
+        "session_id": "sess_abc123",
+        "visitor_id": "vis_xyz789",
+        "url": "https://mystore.com/",
+        "path": "/",
+        "title": "Home - My Store"
+      },
+      {
+        "type": "event",
+        "session_id": "sess_abc123",
+        "visitor_id": "vis_xyz789",
+        "event_name": "view_product",
+        "properties": {"product_id": 101}
+      }
+    ]
+  }'
+```
+
+```javascript JavaScript
+const events = [
+  { type: "pageview", session_id: sid, visitor_id: vid, url: "https://mystore.com/", path: "/" },
+  { type: "event", session_id: sid, visitor_id: vid, event_name: "view_product", properties: { product_id: 101 } }
+];
+
+await fetch("https://front.rmz.gg/api/storefront/analytics/collect/batch", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ events })
+});
+```
+
+```python Python
+requests.post("https://front.rmz.gg/api/storefront/analytics/collect/batch", json={
+    "events": [
+        {"type": "pageview", "session_id": "sess_abc123", "url": "https://mystore.com/", "path": "/"},
+        {"type": "event", "session_id": "sess_abc123", "event_name": "view_product", "properties": {"product_id": 101}}
+    ]
+})
+```
+</CodeGroup>
+
+### Response
+
+#### Success (202)
+
+```json
+{
+  "status": "ok",
+  "processed": 2
+}
+```
+
+The `processed` field indicates how many events from the batch were successfully processed.
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | `events` array is missing or empty, or `store_id` could not be resolved |
+| 429 | Rate limit exceeded (each event in the batch counts against the 120/min limit) |
+
+<Warning>
+Batches are capped at 30 events. Any events beyond the 30th are silently dropped. If your storefront generates more than 30 events between flushes, send multiple batch requests.
+</Warning>
+
+## Supported Event Types
+
+| Type | Description |
+|------|-------------|
+| `pageview` | Page view with title, referrer, and screen width |
+| `event` | Custom named event with arbitrary properties |
+| `outbound_click` | Click on an external link with destination URL and text |
+
+<Note>
+The event types `web_vital`, `js_error`, `time_on_page`, and `scroll_depth` are silently skipped by the server and will not be recorded.
+</Note>

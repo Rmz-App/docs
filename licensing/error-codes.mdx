@@ -1,0 +1,104 @@
+---
+title: "Error Codes"
+description: "All license verification error codes, HTTP status codes, and rate limiting behavior."
+---
+
+When a license verification fails, the API returns a JSON response with `"success": false`, an error code, and a human-readable message.
+
+## Error Response Format
+
+```json
+{
+  "success": false,
+  "error": "LICENSE_NOT_FOUND",
+  "message": "License not found"
+}
+```
+
+## Error Codes
+
+| Error Code | HTTP Status | Message | Description |
+|------------|-------------|---------|-------------|
+| `LICENSE_NOT_FOUND` | 404 | License not found | The license key does not exist for this product ID |
+| `LICENSE_EXPIRED` | 403 | License has expired | The license has passed its expiry date |
+| `LICENSE_REVOKED` | 403 | License has been revoked | The license has been permanently revoked (e.g. due to refund or manual action) |
+| `LICENSE_SUSPENDED` | 403 | License is suspended | The license has been temporarily suspended by the store owner |
+| `HWID_REQUIRED` | 403 | HWID is required for this license | The product lock type is `hwid` but no `hwid` field was included in the request |
+| `ACTIVATION_LIMIT` | 429 | Maximum activations reached | All activation slots are used. The device cannot be activated. |
+
+## Handling Errors in Your Software
+
+<Tabs>
+  <Tab title="Node.js">
+    ```javascript
+    const result = await verifyLicense(key, hwid);
+
+    if (!result.valid) {
+      switch (result.error) {
+        case "LICENSE_NOT_FOUND":
+          console.log("Invalid license key. Please check and try again.");
+          break;
+        case "LICENSE_EXPIRED":
+          console.log("Your license has expired. Please renew.");
+          break;
+        case "LICENSE_REVOKED":
+          console.log("This license has been revoked.");
+          break;
+        case "LICENSE_SUSPENDED":
+          console.log("This license is temporarily suspended. Contact support.");
+          break;
+        case "HWID_REQUIRED":
+          console.log("Hardware ID is required for this product.");
+          break;
+        case "ACTIVATION_LIMIT":
+          console.log("Device limit reached. Deactivate another device first.");
+          break;
+        default:
+          console.log("Verification failed:", result.message);
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    result = verify_license(key, hwid=hwid)
+
+    if not result["valid"]:
+        error = result["error"]
+        if error == "LICENSE_NOT_FOUND":
+            print("Invalid license key. Please check and try again.")
+        elif error == "LICENSE_EXPIRED":
+            print("Your license has expired. Please renew.")
+        elif error == "LICENSE_REVOKED":
+            print("This license has been revoked.")
+        elif error == "LICENSE_SUSPENDED":
+            print("This license is temporarily suspended. Contact support.")
+        elif error == "HWID_REQUIRED":
+            print("Hardware ID is required for this product.")
+        elif error == "ACTIVATION_LIMIT":
+            print("Device limit reached. Deactivate another device first.")
+        else:
+            print(f"Verification failed: {result['message']}")
+    ```
+  </Tab>
+</Tabs>
+
+## Rate Limiting
+
+The verification endpoint is rate limited to **60 requests per minute per IP address**.
+
+This is more than sufficient for typical usage -- your software usually verifies once on startup or periodically (e.g. every few hours).
+
+When the rate limit is exceeded, the API returns:
+
+| HTTP Status | Description |
+|-------------|-------------|
+| 429 | Too Many Requests |
+
+<Warning>
+  If you receive HTTP 429, implement retry with exponential backoff. Do not immediately retry in a tight loop.
+</Warning>
+
+<Tip>
+  If your software runs on a server with many users behind the same IP, consider caching the verification result locally for a few minutes to reduce API calls.
+</Tip>

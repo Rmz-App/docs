@@ -1,0 +1,98 @@
+---
+title: Environments
+description: Base URLs and environments for all RMZ APIs.
+---
+
+# Environments
+
+RMZ APIs are available in production. All base URLs use the `rmz.gg` domain.
+
+## Base URLs
+
+| API | Base URL |
+|-----|----------|
+| **Merchant API** | `https://merchant-api.rmz.gg/shawarma` |
+| **Storefront API** | `https://front.rmz.gg/api` |
+| **License Verification** | `https://license.rmz.gg` |
+| **FiveM API** | `https://fivem.rmz.gg/api/fivem` |
+| **Embed API** | `https://embed.rmz.gg/api/embed` |
+
+## Merchant API
+
+```
+https://merchant-api.rmz.gg/shawarma
+```
+
+All Merchant API endpoints are prefixed under `/shawarma`. For example:
+
+- `GET https://merchant-api.rmz.gg/shawarma/store`
+- `GET https://merchant-api.rmz.gg/shawarma/orders`
+- `POST https://merchant-api.rmz.gg/shawarma/orders`
+
+## Storefront API
+
+```
+https://front.rmz.gg/api
+```
+
+The Storefront API identifies the store by the request's **origin domain**. Your custom storefront must send requests from the store's configured domain. For example:
+
+- `GET https://front.rmz.gg/api/products`
+- `POST https://front.rmz.gg/api/cart/add`
+- `POST https://front.rmz.gg/api/checkout`
+
+## License Verification API
+
+```
+https://license.rmz.gg
+```
+
+A single endpoint for verifying license keys:
+
+- `POST https://license.rmz.gg/verify`
+
+## FiveM API
+
+```
+https://fivem.rmz.gg/api/fivem
+```
+
+Used by the FiveM resource to poll for pending commands:
+
+- `GET https://fivem.rmz.gg/api/fivem/queue`
+- `DELETE https://fivem.rmz.gg/api/fivem/queue`
+- `GET https://fivem.rmz.gg/api/fivem/queue/online/{playerId}`
+
+<Note>
+The FiveM resource handles communication with this API automatically. You do not need to call these endpoints directly.
+</Note>
+
+## Embed API
+
+```
+https://embed.rmz.gg/api/embed
+```
+
+The Embed API allows external websites to embed a checkout widget. For example:
+
+- `GET https://embed.rmz.gg/api/embed/product/{productId}`
+- `POST https://embed.rmz.gg/api/embed/checkout`
+
+## Required Headers
+
+All APIs expect JSON:
+
+```
+Content-Type: application/json
+Accept: application/json
+```
+
+The Merchant API additionally requires:
+```
+Authorization: Bearer YOUR_API_TOKEN
+```
+
+The Storefront API uses cart tokens for cart operations:
+```
+X-Cart-Token: YOUR_CART_TOKEN
+```

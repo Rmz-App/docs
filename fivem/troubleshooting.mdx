@@ -1,0 +1,97 @@
+---
+title: "Troubleshooting"
+description: "Common errors, debug mode, and connection status indicators for the RMZ FiveM integration."
+---
+
+## Common Errors
+
+| Console Message | Cause | Fix |
+|-----------------|-------|-----|
+| `ERROR: Secret key not configured!` | The secret key in `config.lua` is empty or still set to the placeholder value | Set your actual secret key from the RMZ dashboard in `config.lua` |
+| `API Error: 401` | The secret key is invalid, or the server has been disabled in the dashboard | Verify the key matches what is shown in **Benefits** > **FiveM Servers** in your RMZ dashboard |
+| `API Error: 403` | The server's IP address does not match the IP whitelist configured in the dashboard | Check the IP restriction setting in your RMZ dashboard, or remove the IP restriction to allow any IP |
+| `API Error: 429` | Rate limit exceeded (30 requests per minute) | Increase `Config.PollInterval` in `config.lua` to a higher value (e.g. 15 or 20 seconds) |
+| `Error executing command: ...` | The command is invalid, or the target resource/script is not running | Test the command manually in your server console to confirm it works |
+
+## Console Commands
+
+The resource registers two server console commands for testing:
+
+| Command | Description |
+|---------|-------------|
+| `rmz_test` | Tests the connection to the RMZ API and reports the result. Shows the API URL, a preview of the secret key, and the number of pending commands. |
+| `rmz_echo <message>` | Prints a message to the console prefixed with `[RMZ-ECHO]`. Use this as a target command in the RMZ dashboard to verify that command execution is working end-to-end. |
+
+```
+rmz_test
+rmz_echo Hello from RMZ!
+```
+
+## Enable Debug Mode
+
+Debug mode prints detailed information about every API poll and command execution to the server console. Enable it by setting `Config.Debug = true` in `config.lua`:
+
+```lua
+Config.Debug = true
+```
+
+Then restart the resource:
+
+```
+restart rmz-fivem
+```
+
+Check the server console for lines prefixed with `[RMZ]`. These will show:
+- Each poll request and response
+- Commands being executed and their results
+- Confirmation callbacks to the RMZ API
+
+<Tip>
+  Disable debug mode in production (`Config.Debug = false`) to keep your console clean. Only enable it when actively troubleshooting an issue.
+</Tip>
+
+## Connection Status
+
+On the **FiveM Servers** page in your RMZ dashboard, each server shows a connection indicator:
+
+| Status | Indicator | Meaning |
+|--------|-----------|---------|
+| **Connected** | Green | The resource is polling successfully. A poll was received within the last 2 minutes. |
+| **Disconnected** | Grey | No poll has been received in the last 2 minutes. The resource may not be running or cannot reach the API. |
+
+## Resource Not Starting
+
+If the resource does not start or you see no `[RMZ]` output in the console:
+
+1. Confirm the resource folder is named `rmz-fivem` and is inside your `resources/` directory
+2. Confirm `ensure rmz-fivem` is in your `server.cfg`
+3. Check that `config.lua` has a valid secret key set
+4. Verify your server can reach `https://fivem.rmz.gg` (check firewall rules)
+
+## Commands Not Executing
+
+If orders are completing but commands are not running on the server:
+
+<Steps>
+  <Step title="Enable debug mode">
+    Set `Config.Debug = true` and restart the resource.
+  </Step>
+  <Step title="Check the console">
+    Look for `[RMZ]` messages. Are polls succeeding? Are commands being received?
+  </Step>
+  <Step title="Verify the benefit is attached">
+    In the RMZ dashboard, confirm the FiveM benefit is attached to the product.
+  </Step>
+  <Step title="Check online-required setting">
+    If "Execute only when player is online" is enabled, commands wait until the player joins. Test with this setting disabled first.
+  </Step>
+  <Step title="Test the command manually">
+    Copy the exact command from the debug output and run it in your server console. If it fails there, the issue is with the command itself, not the RMZ integration.
+  </Step>
+</Steps>
+
+## Security Tips
+
+- Regenerate your secret key immediately if it is ever exposed publicly
+- Use IP whitelisting in the dashboard to restrict which server IPs can poll
+- Do not commit `config.lua` with your real secret key to any public repository

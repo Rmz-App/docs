@@ -1,0 +1,88 @@
+---
+title: "Activations"
+description: "How device activations work, max activation limits, and how to reset activations from the dashboard."
+---
+
+The `max_activations` setting on your license product controls how many devices (or IPs) can use a single license key.
+
+## Activation Limits
+
+| Setting | Behavior |
+|---------|----------|
+| `1` | One device only. A second device is rejected. |
+| `3` | Up to three devices. The fourth is rejected. |
+| `0` or empty | Unlimited activations. |
+
+## Auto-Activation Flow
+
+There is no separate "activate" API call. The `/verify` endpoint handles activation automatically:
+
+<Steps>
+  <Step title="First verification">
+    A call with `hwid: "machine-A"` activates the device and returns a valid response. Slot 1 is used.
+  </Step>
+  <Step title="Same device again">
+    Another call with `hwid: "machine-A"` returns valid. The device is already activated -- the call is **idempotent** and does not consume an additional slot.
+  </Step>
+  <Step title="New device">
+    A call with `hwid: "machine-B"` activates the second device. Slot 2 is used.
+  </Step>
+  <Step title="Limit reached">
+    If `max_activations` is reached and a new HWID or IP calls verify, the API returns the `ACTIVATION_LIMIT` error (HTTP 429).
+  </Step>
+</Steps>
+
+## ACTIVATION_LIMIT Error
+
+When all slots are used, the API responds with:
+
+```json
+{
+  "success": false,
+  "error": "ACTIVATION_LIMIT",
+  "message": "Activation limit reached"
+}
+```
+
+The customer needs to either:
+- Use a device that is already activated
+- Ask the store owner to reset their activations
+- Purchase an additional license
+
+## Resetting Activations
+
+Store owners can reset all device activations for a license key from the dashboard:
+
+1. Go to your store dashboard
+2. Navigate to **Licenses**
+3. Find the license key (use search or filters)
+4. Click the row actions menu
+5. Select **Reset Activations**
+
+This frees all activation slots immediately. The next verification call from any device will re-activate it.
+
+<Note>
+  Resetting activations is useful when a customer gets a new computer, reinstalls their OS, or changes their server IP. It does not affect the license validity or expiry date.
+</Note>
+
+## Activation Data in Responses
+
+Every successful verification response includes activation counts:
+
+```json
+{
+  "activations": {
+    "current": 1,
+    "max": 3,
+    "remaining": 2
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `current` | Number of devices currently activated |
+| `max` | Maximum allowed (`null` if unlimited) |
+| `remaining` | Slots left (`null` if unlimited) |
+
+Use this data to show your users how many devices they have left, or to warn them when they are approaching the limit.

@@ -1,0 +1,306 @@
+---
+title: Create Order
+description: Create a new order programmatically via the Merchant API.
+---
+
+# Create Order
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
+  <code>/orders</code>
+</div>
+
+Creates a new order for a customer. If the order total is greater than zero, a checkout link is returned for payment. If the order is free, it is completed immediately.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Content-Type` | `application/json` | Yes |
+
+## Request Body
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `customer` | object | No | Customer identification. Provide either `customer.id` to reference an existing customer, OR the full customer details below to create/find a customer. |
+| `customer.id` | integer | No | Existing customer ID (use this OR the fields below) |
+| `customer.country_code` | string | Conditional | Required if `customer.id` is not provided. One of: `966`, `973`, `971`, `974`, `968`, `965` |
+| `customer.phone` | string | Conditional | Required if `customer.id` is not provided |
+| `customer.firstName` | string | Conditional | Required if `customer.id` is not provided |
+| `customer.lastName` | string | Conditional | Required if `customer.id` is not provided |
+| `customer.email` | string | Conditional | Required if `customer.id` is not provided |
+| `created_from` | string | Yes | Domain name where the order originates (e.g., `myapp.com`) |
+| `products` | array | Yes | Array of products to order (min: 1) |
+| `products[].identifier_type` | string | Yes | Either `id` or `slug` |
+| `products[].identifier` | string/integer | Yes | Product ID or slug |
+| `products[].quantity` | integer | Yes | Quantity (min: 1) |
+| `products[].options` | object | No | Product field/option selections |
+| `products[].notice` | string | No | Customer note for this item (max: 800 chars) |
+| `products[].subscription_plan` | integer | No | Subscription variant ID (for subscription products) |
+| `coupon_code` | string | No | Coupon code to apply |
+
+## Example Request — Existing Customer
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/orders" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": {
+      "id": 12345
+    },
+    "created_from": "myapp.com",
+    "products": [
+      {
+        "identifier_type": "id",
+        "identifier": 101,
+        "quantity": 2
+      }
+    ],
+    "coupon_code": "SAVE10"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/orders", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer YOUR_API_TOKEN",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    customer: { id: 12345 },
+    created_from: "myapp.com",
+    products: [
+      { identifier_type: "id", identifier: 101, quantity: 2 }
+    ],
+    coupon_code: "SAVE10"
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/orders",
+    headers={
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+    },
+    json={
+        "customer": {"id": 12345},
+        "created_from": "myapp.com",
+        "products": [
+            {"identifier_type": "id", "identifier": 101, "quantity": 2}
+        ],
+        "coupon_code": "SAVE10"
+    }
+)
+data = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/orders");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "customer" => ["id" => 12345],
+    "created_from" => "myapp.com",
+    "products" => [
+        ["identifier_type" => "id", "identifier" => 101, "quantity" => 2]
+    ],
+    "coupon_code" => "SAVE10"
+]));
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Example Request — New Customer
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/orders" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": {
+      "country_code": "966",
+      "phone": "501234567",
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com"
+    },
+    "created_from": "myapp.com",
+    "products": [
+      {
+        "identifier_type": "slug",
+        "identifier": "free-ebook",
+        "quantity": 1
+      }
+    ]
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/orders", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer YOUR_API_TOKEN",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    customer: {
+      country_code: "966",
+      phone: "501234567",
+      firstName: "Ahmed",
+      lastName: "Ali",
+      email: "ahmed@example.com"
+    },
+    created_from: "myapp.com",
+    products: [
+      { identifier_type: "slug", identifier: "free-ebook", quantity: 1 }
+    ]
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/orders",
+    headers={
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+    },
+    json={
+        "customer": {
+            "country_code": "966",
+            "phone": "501234567",
+            "firstName": "Ahmed",
+            "lastName": "Ali",
+            "email": "ahmed@example.com"
+        },
+        "created_from": "myapp.com",
+        "products": [
+            {"identifier_type": "slug", "identifier": "free-ebook", "quantity": 1}
+        ]
+    }
+)
+data = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/orders");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "customer" => [
+        "country_code" => "966",
+        "phone" => "501234567",
+        "firstName" => "Ahmed",
+        "lastName" => "Ali",
+        "email" => "ahmed@example.com"
+    ],
+    "created_from" => "myapp.com",
+    "products" => [
+        ["identifier_type" => "slug", "identifier" => "free-ebook", "quantity" => 1]
+    ]
+]));
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Success Response — Paid Order
+
+**HTTP 201 Created**
+
+```json
+{
+  "message": "Checkout link created successfully",
+  "data": {
+    "checkout_id": 123456,
+    "checkout_url": "https://app.rmz.gg/checkout/abc123def456",
+    "amount": 299.99,
+    "status": "pending_payment"
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+Redirect the customer to `checkout_url` to complete payment.
+
+## Success Response — Free Order
+
+**HTTP 201 Created**
+
+```json
+{
+  "message": "Order created successfully",
+  "data": {
+    "order_id": 789012,
+    "status": "completed",
+    "amount": 0
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+Free orders are completed immediately with no checkout step.
+
+## Idempotency
+
+Duplicate requests within 5 minutes return the existing checkout or order instead of creating a new one. The response includes `"duplicate": true`:
+
+```json
+{
+  "success": true,
+  "message": "Checkout already exists",
+  "data": {
+    "checkout_id": 123456,
+    "duplicate": true
+  }
+}
+```
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `400` | Business logic error (product not found, out of stock, invalid coupon, etc.) |
+| `401` | Unauthorized — invalid or missing token |
+| `422` | Validation error — missing or invalid fields |
+
+### Common Error Messages
+
+| Message | Cause |
+|---------|-------|
+| `Product not found: {identifier}` | Product ID or slug does not exist in your store |
+| `Product unavailable: {name}` | Product is disabled (status 3) |
+| `Requested quantity not available for product: {name}` | Insufficient stock |
+| `Minimum quantity is {n} for product: {name}` | Below the minimum order quantity |
+| `Maximum quantity allowed for subscriptions is 1` | Subscription products cannot have quantity > 1 |
+| `Invalid coupon code` | Coupon does not exist or is disabled |
+| `Coupon is no longer valid` | Coupon has reached its maximum usage |
+| `Failed to create or find customer` | Customer ID not found in your store |

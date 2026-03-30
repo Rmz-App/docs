@@ -1,0 +1,212 @@
+---
+title: "Signature Verification"
+description: "Verify the authenticity of RMZ webhook deliveries using HMAC-SHA256 signatures."
+---
+
+<Warning>
+  Webhook signing is **not enabled by default**. Webhooks created through the dashboard have a secret key generated and stored, but the `Signature` header is not sent unless signing is explicitly enabled for the webhook. The information below describes how signing works **when it is enabled**.
+</Warning>
+
+When signing is enabled, every webhook request includes a `Signature` header containing an HMAC-SHA256 hash. You should verify this signature to ensure the request genuinely came from RMZ and was not tampered with in transit.
+
+## How Signing Works
+
+1. RMZ serializes the webhook payload to JSON
+2. The JSON string is signed using HMAC-SHA256 with your webhook's secret key
+3. The resulting hex-encoded hash is sent in the `Signature` header
+4. Your server recomputes the hash and compares it to the header value
+
+```
+Signature: a1b2c3d4e5f6...
+```
+
+## Verification Steps
+
+<Steps>
+
+<Step title="Extract the signature">
+  Read the `Signature` header from the incoming request.
+</Step>
+
+<Step title="Get the raw request body">
+  Read the raw request body as a string. Do not parse it to JSON first — the signature is computed on the raw JSON string.
+</Step>
+
+<Step title="Compute the expected signature">
+  Calculate HMAC-SHA256 of the raw body using your webhook's secret key.
+</Step>
+
+<Step title="Compare signatures">
+  Use a constant-time comparison to check that the computed hash matches the `Signature` header. Reject the request if they do not match.
+</Step>
+
+</Steps>
+
+<Warning>
+  Always use constant-time string comparison (e.g., `hash_equals` in PHP, `hmac.compare_digest` in Python) to prevent timing attacks.
+</Warning>
+
+## Code Examples
+
+<CodeGroup>
+
+```javascript Node.js
+const crypto = require("crypto");
+
+function verifyWebhookSignature(rawBody, signatureHeader, secretKey) {
+  const expectedSignature = crypto
+    .createHmac("sha256", secretKey)
+    .update(rawBody)
+    .digest("hex");
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signatureHeader),
+    Buffer.from(expectedSignature)
+  );
+}
+
+// Express.js example
+app.post("/webhooks/rmz", express.raw({ type: "application/json" }), (req, res) => {
+  const signature = req.headers["signature"];
+  const secretKey = process.env.RMZ_WEBHOOK_SECRET;
+
+  if (!verifyWebhookSignature(req.body.toString(), signature, secretKey)) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+
+  const payload = JSON.parse(req.body);
+  console.log("Verified event:", payload.event);
+
+  // Process the webhook...
+
+  res.status(200).json({ received: true });
+});
+```
+
+```python Python
+import hmac
+import hashlib
+import json
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+def verify_webhook_signature(raw_body: bytes, signature: str, secret_key: str) -> bool:
+    expected = hmac.new(
+        secret_key.encode("utf-8"),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(signature, expected)
+
+@app.route("/webhooks/rmz", methods=["POST"])
+def handle_webhook():
+    signature = request.headers.get("Signature", "")
+    secret_key = "your_webhook_secret_key"
+
+    if not verify_webhook_signature(request.data, signature, secret_key):
+        return jsonify({"error": "Invalid signature"}), 401
+
+    payload = request.get_json()
+    print(f"Verified event: {payload['event']}")
+
+    # Process the webhook...
+
+    return jsonify({"received": True}), 200
+```
+
+```php PHP
+<?php
+
+function verifyWebhookSignature(string $rawBody, string $signature, string $secretKey): bool
+{
+    $expected = hash_hmac('sha256', $rawBody, $secretKey);
+
+    return hash_equals($expected, $signature);
+}
+
+// Laravel example
+Route::post('/webhooks/rmz', function (Request $request) {
+    $signature = $request->header('Signature');
+    $secretKey = config('services.rmz.webhook_secret');
+    $rawBody = $request->getContent();
+
+    if (!verifyWebhookSignature($rawBody, $signature, $secretKey)) {
+        return response()->json(['error' => 'Invalid signature'], 401);
+    }
+
+    $payload = json_decode($rawBody, true);
+    Log::info('Verified webhook event: ' . $payload['event']);
+
+    // Process the webhook...
+
+    return response()->json(['received' => true], 200);
+});
+```
+
+```go Go
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
+	"net/http"
+)
+
+func verifyWebhookSignature(body []byte, signature string, secretKey string) bool {
+	mac := hmac.New(sha256.New, []byte(secretKey))
+	mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+
+	return hmac.Equal([]byte(signature), []byte(expected))
+}
+
+func webhookHandler(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read body", http.StatusBadRequest)
+		return
+	}
+
+	signature := r.Header.Get("Signature")
+	secretKey := "your_webhook_secret_key"
+
+	if !verifyWebhookSignature(body, signature, secretKey) {
+		http.Error(w, "Invalid signature", http.StatusUnauthorized)
+		return
+	}
+
+	var payload map[string]interface{}
+	json.Unmarshal(body, &payload)
+
+	// Process the webhook...
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"received": true})
+}
+```
+
+</CodeGroup>
+
+## Important Notes
+
+<Accordion title="Why use the raw body, not parsed JSON?">
+  The signature is computed on the exact JSON string that RMZ sends. If you parse the JSON and re-serialize it, whitespace or key ordering differences could produce a different hash. Always verify against the raw request body.
+</Accordion>
+
+<Accordion title="What if signing is disabled?">
+  If signing is not enabled for your webhook, the `Signature` header will not be present. The `is_signed` flag in the webhook configuration controls this. By default, webhooks created through the dashboard do not have signing enabled. You can still use the `X-RMZ-REQUEST-ID` header for tracking purposes.
+</Accordion>
+
+<Accordion title="Can I rotate the secret key?">
+  Currently, the secret key is generated when the webhook is created and cannot be rotated independently. To get a new key, delete the webhook and create a new one. The new webhook will receive a fresh 28-character secret key.
+</Accordion>
+
+<Tip>
+  Even if you choose not to verify signatures, always validate the payload structure before processing. Check that required fields exist and have expected types.
+</Tip>

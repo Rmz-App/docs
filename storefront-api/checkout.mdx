@@ -1,0 +1,214 @@
+---
+title: "Checkout"
+description: "Create checkout sessions and retrieve payment results."
+---
+
+## POST /checkout
+
+Create a checkout session from the current cart. The cart is validated and cleared upon successful checkout creation.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`) and `X-Cart-Token`.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+| X-Cart-Token | {cart_token} | Yes |
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| customer_note | string | No | Optional note from the customer |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/checkout" \
+  -H "Authorization: Bearer 1|abc123xyz..." \
+  -H "X-Cart-Token: cart_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_note": "Please deliver after 5 PM"}'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/checkout", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer 1|abc123xyz...",
+    "X-Cart-Token": "cart_abc123",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ customer_note: "Please deliver after 5 PM" })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/checkout",
+    headers={
+        "Authorization": "Bearer 1|abc123xyz...",
+        "X-Cart-Token": "cart_abc123"
+    },
+    json={"customer_note": "Please deliver after 5 PM"}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")
+    ->withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->post("https://front.rmz.gg/api/checkout", [
+        "customer_note" => "Please deliver after 5 PM"
+    ]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Payment Required (200)
+
+When the order total is greater than zero, a payment URL is returned:
+
+```json
+{
+  "success": true,
+  "data": {
+    "type": "payment_required",
+    "checkout_id": 12345,
+    "checkout_url": "chk_abc123",
+    "amount": 399.98,
+    "redirect_url": "https://store.rmz.gg/checkout/chk_abc123"
+  },
+  "message": "Checkout session created"
+}
+```
+
+Redirect the customer to `redirect_url` to complete the payment.
+
+#### Free Order (200)
+
+When the order total is zero (e.g., 100% discount coupon), the order is created immediately:
+
+```json
+{
+  "success": true,
+  "data": {
+    "type": "free_order",
+    "order_id": 78901,
+    "redirect_url": null
+  },
+  "message": "Order completed successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Cart is empty, validation failed, coupon invalid, or total amount mismatch |
+| 401 | Not authenticated |
+| 500 | Checkout processing error |
+
+<Warning>
+The cart is cleared after a successful checkout. If the customer needs to modify their order, they must add items to the cart again.
+</Warning>
+
+<Note>
+The checkout includes a server-side total recalculation as a security measure. If the cart total doesn't match the recalculated amount (e.g., due to cart manipulation), the checkout will fail.
+</Note>
+
+---
+
+## GET /checkout/{id}/result
+
+Get the result of a checkout after payment processing. Use the `checkout_url` value (not the numeric ID) as the path parameter.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | string | Checkout URL identifier (e.g., `chk_abc123`) |
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/checkout/chk_abc123/result" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/checkout/chk_abc123/result", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/checkout/chk_abc123/result", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")
+    ->get("https://front.rmz.gg/api/checkout/chk_abc123/result");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "checkout": {
+      "id": 12345,
+      "amount": 399.98,
+      "status": "Completed",
+      "payment_method": "card",
+      "payment_id": "ch_abc123",
+      "created_at": "2024-06-15T14:30:00.000000Z"
+    },
+    "order": {
+      "id": 78901,
+      "total": 399.98,
+      "status": "Completed",
+      "created_at": "2024-06-15T14:30:00.000000Z"
+    }
+  },
+  "message": "Checkout result retrieved"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 401 | Not authenticated |
+| 404 | Checkout not found, order not yet created, or checkout belongs to a different customer |
+
+<Tip>
+Poll this endpoint after redirecting the customer back from the payment page to check whether the payment was successful and the order was created.
+</Tip>

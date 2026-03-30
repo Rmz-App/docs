@@ -1,0 +1,144 @@
+---
+title: "Payment Status"
+description: "Check whether a payment has been completed for a checkout session."
+---
+
+After initiating a payment and redirecting the customer, poll this endpoint to determine when the payment is confirmed and the order is created.
+
+## Check Payment Status
+
+<Note>
+  This is a public endpoint. It does not require the `X-Embed-Key` header or authentication.
+</Note>
+
+```
+GET /api/embed/payment/status/{checkoutUrl}
+```
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `checkoutUrl` | string | The `checkout_url` value from the checkout response |
+
+### Example Request
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://embed.rmz.gg/api/embed/payment/status/ck_abc123" \
+  -H "Accept: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://embed.rmz.gg/api/embed/payment/status/ck_abc123"
+);
+
+const { data } = await response.json();
+
+if (data.is_paid) {
+  console.log("Payment complete! Order ID:", data.order_id);
+} else {
+  console.log("Payment pending...");
+}
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://embed.rmz.gg/api/embed/payment/status/ck_abc123"
+)
+
+data = response.json()["data"]
+if data["is_paid"]:
+    print(f"Order created: {data['order_id']}")
+```
+
+```php PHP
+$response = Http::get('https://embed.rmz.gg/api/embed/payment/status/ck_abc123');
+
+$data = $response->json()['data'];
+if ($data['is_paid']) {
+    echo "Order ID: " . $data['order_id'];
+}
+```
+
+</CodeGroup>
+
+### Success Response (200)
+
+**Payment completed:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "is_paid": true,
+    "order_id": 456
+  }
+}
+```
+
+**Payment pending:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "is_paid": false,
+    "order_id": null
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `is_paid` | boolean | `true` if payment was successful and an order was created |
+| `order_id` | integer \| null | The order ID if payment is complete, otherwise `null` |
+
+### Error Response
+
+**Checkout not found (404)**
+
+```json
+{
+  "success": false,
+  "message": "Checkout not found"
+}
+```
+
+## Polling Strategy
+
+After redirecting the customer to the payment page, poll this endpoint to detect when payment completes:
+
+```javascript
+async function waitForPayment(checkoutUrl, maxAttempts = 60) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const response = await fetch(
+      `https://embed.rmz.gg/api/embed/payment/status/${checkoutUrl}`
+    );
+    const { data } = await response.json();
+
+    if (data.is_paid) {
+      return data.order_id;
+    }
+
+    // Wait 3 seconds between polls
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  }
+
+  throw new Error("Payment timeout");
+}
+```
+
+<Tip>
+  Poll every 2-3 seconds. For card payments (Mada, Visa, Apple Pay), confirmation is typically near-instant after the customer completes the payment page. For bank transfers and cryptocurrency, it may take longer.
+</Tip>
+
+<Warning>
+  This endpoint does not require authentication or an embed key, so the checkout URL should be treated as a secret. Do not expose it in URLs that could be shared publicly.
+</Warning>

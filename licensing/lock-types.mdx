@@ -1,0 +1,95 @@
+---
+title: "Lock Types"
+description: "Control how license keys are bound to devices. Choose between no binding, hardware ID locking, or IP address locking."
+---
+
+When creating a license product, you choose a **lock type** that determines how keys are bound to devices. There are three options.
+
+## `none` -- No Device Binding
+
+Any device can verify the key. No `hwid` field is needed in the request. This is the simplest option for software that does not need device-level restrictions.
+
+```json
+{
+  "product_id": 123,
+  "license_key": "MYAPP-XXXX-XXXX-XXXX-XXXX"
+}
+```
+
+<Tip>
+  Use `none` when you only care about whether the key is valid, not which device is using it. Activations still apply -- each unique verification counts as an activation if `max_activations` is set.
+</Tip>
+
+## `hwid` -- Hardware ID Lock
+
+Each device sends a machine fingerprint (hardware ID). The key auto-binds to the HWID on the first verification call. Subsequent calls from the same HWID are idempotent. A new HWID consumes an activation slot.
+
+```json
+{
+  "product_id": 123,
+  "license_key": "MYAPP-XXXX-XXXX-XXXX-XXXX",
+  "hwid": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+}
+```
+
+<Warning>
+  If the lock type is `hwid` and the request does not include an `hwid` field, the API returns the `HWID_REQUIRED` error (HTTP 403).
+</Warning>
+
+### Generating a Hardware ID
+
+Combine machine-specific values and hash them to produce a consistent, unique identifier. The goal is a string that stays the same across reboots but differs between machines.
+
+<CodeGroup>
+
+```javascript Node.js
+const crypto = require("crypto");
+const os = require("os");
+const raw = `${os.hostname()}-${os.arch()}-${os.platform()}`;
+const hwid = crypto.createHash("sha256").update(raw).digest("hex").slice(0, 32);
+```
+
+```python Python
+import hashlib, platform, uuid
+raw = f"{platform.node()}-{platform.machine()}-{uuid.getnode()}"
+hwid = hashlib.sha256(raw.encode()).hexdigest()[:32]
+```
+
+```php PHP
+$raw = php_uname('n') . '-' . php_uname('m') . '-' . php_uname('s');
+$hwid = substr(hash('sha256', $raw), 0, 32);
+```
+
+```lua FiveM Lua
+local hwid = GetConvar("sv_hostname", "unknown") .. "-" .. GetConvar("sv_maxclients", "0")
+```
+
+</CodeGroup>
+
+<Tip>
+  For stronger HWIDs, include additional hardware identifiers like MAC address, CPU ID, or disk serial number. The more inputs you combine, the harder it is to spoof.
+</Tip>
+
+## `ip` -- IP Address Lock
+
+The API auto-detects the caller's IP address and binds it to the key. No `hwid` field is needed in the request. Each unique IP uses an activation slot.
+
+```json
+{
+  "product_id": 123,
+  "license_key": "MYAPP-XXXX-XXXX-XXXX-XXXX"
+}
+```
+
+<Note>
+  IP locking is useful for server-side software (e.g. FiveM resources, web apps, bots) where the IP is stable. It is not recommended for end-user desktop software because consumer IPs change frequently.
+</Note>
+
+## Comparison
+
+| Feature | `none` | `hwid` | `ip` |
+|---------|--------|--------|------|
+| Device binding | No | Yes (machine fingerprint) | Yes (IP address) |
+| `hwid` field required | No | Yes | No |
+| Best for | Simple key-only checks | Desktop software | Server-side software |
+| Spoofing difficulty | N/A | Medium-High | Low (VPN/proxy) |

@@ -1,0 +1,262 @@
+---
+title: "Lua / FiveM Examples"
+description: "Complete FiveM Lua examples for license verification, with and without end-to-end encryption."
+---
+
+Full working FiveM Lua examples for the RMZ license verification API. Uses FiveM's built-in `PerformHttpRequest` for HTTP calls.
+
+All examples are available on GitHub: [github.com/Rmz-App/rmz-license-examples](https://github.com/Rmz-App/rmz-license-examples)
+
+## Dependencies
+
+| Mode | Dependencies |
+|------|-------------|
+| Without E2EE | None (FiveM built-in HTTP) |
+| With E2EE | Node.js helper (Lua has no native AES-GCM) |
+
+## Plain Verification
+
+<CodeGroup>
+
+```lua verify.lua
+--[[
+    RMZ License Verification — Lua / FiveM (without E2EE)
+    https://license.rmz.gg
+
+    Drop this file into your FiveM resource and call VerifyLicense().
+]]
+
+-- =============================================
+-- Configuration — change these values
+-- =============================================
+local PRODUCT_ID = 0 -- Replace with your product ID from the dashboard
+local API_URL = "https://license.rmz.gg/verify"
+
+
+--- Generate a simple hardware identifier from the server's hostname.
+--- For FiveM, you can also use the player's license identifier.
+--- @return string
+local function GetHwid()
+    return GetConvar("sv_hostname", "unknown") .. "-" .. GetConvar("sv_maxclients", "0")
+end
+
+
+--- Verify a license key with the RMZ API.
+--- @param licenseKey string  The license key to verify
+--- @param hwid string|nil    Hardware ID for device binding
+--- @param callback function  Called with (valid, data_or_error)
+local function VerifyLicense(licenseKey, hwid, callback)
+    local payload = json.encode({
+        product_id = PRODUCT_ID,
+        license_key = licenseKey,
+        hwid = hwid,
+    })
+
+    PerformHttpRequest(API_URL, function(statusCode, responseText, headers)
+        if statusCode == 0 then
+            callback(false, { error = "CONNECTION_ERROR", message = "Could not connect to license server" })
+            return
+        end
+
+        local body = json.decode(responseText)
+
+        if statusCode == 200 and body and body.success then
+            callback(true, body.data)
+        else
+            callback(false, {
+                error = body and body.error or "UNKNOWN",
+                message = body and body.message or "Unknown error",
+            })
+        end
+    end, "POST", payload, { ["Content-Type"] = "application/json" })
+end
+
+
+-- =============================================
+-- Example usage (FiveM server-side)
+-- =============================================
+local LICENSE_KEY = "" -- Replace with your license key
+
+Citizen.CreateThread(function()
+    local hwid = GetHwid()
+    print("[RMZ License] Verifying license...")
+
+    VerifyLicense(LICENSE_KEY, hwid, function(valid, data)
+        if valid then
+            print("[RMZ License] Valid!")
+            print("  Product: " .. data.product.name)
+            print("  Status:  " .. data.status)
+            if data.expires_at then
+                print("  Expires: " .. data.expires_at)
+            end
+        else
+            print("[RMZ License] INVALID: " .. data.error .. " — " .. data.message)
+            -- Optionally stop the resource:
+            -- StopResource(GetCurrentResourceName())
+        end
+    end)
+end)
+```
+
+</CodeGroup>
+
+## With E2EE
+
+FiveM's Lua runtime does not have built-in AES-256-GCM decryption. The recommended approach is to run a small Node.js helper alongside your resource that handles decryption via a local HTTP endpoint.
+
+<Warning>
+  Lua has no native AES-GCM support. The E2EE example below requires a local Node.js decryption service running on `http://127.0.0.1:3999/decrypt`. You can use the [Node.js E2EE example](/licensing/examples/javascript) as a starting point for the helper.
+</Warning>
+
+<CodeGroup>
+
+```lua verify_e2ee.lua
+--[[
+    RMZ License Verification — Lua / FiveM (with E2EE)
+    https://license.rmz.gg
+
+    NOTE: FiveM's Lua does not have built-in AES-256-GCM decryption.
+    For E2EE in FiveM, use the server-side Node.js bridge approach below.
+
+    This file shows how to call a local Node.js decryption endpoint
+    that your resource runs alongside the Lua script.
+
+    Alternative: Use the Node.js example (verify_e2ee.js) as a
+    standalone server-side script for FiveM resources.
+]]
+
+-- =============================================
+-- Configuration — change these values
+-- =============================================
+local PRODUCT_ID = 0 -- Replace with your product ID from the dashboard
+local ENCRYPTION_KEY = "" -- Replace with your 64-character hex key from product settings
+local API_URL = "https://license.rmz.gg/verify"
+
+-- Local decryption endpoint (run verify_e2ee.js as a helper)
+-- Or handle decryption in your Node.js FiveM server script
+local DECRYPT_URL = "http://127.0.0.1:3999/decrypt"
+
+
+--- Generate a simple hardware identifier.
+--- @return string
+local function GetHwid()
+    return GetConvar("sv_hostname", "unknown") .. "-" .. GetConvar("sv_maxclients", "0")
+end
+
+
+--- Decrypt an encrypted response via the local Node.js helper.
+--- @param encryptedBody table  The encrypted response body
+--- @param callback function    Called with decrypted table or nil
+local function DecryptResponse(encryptedBody, callback)
+    local payload = json.encode({
+        payload = encryptedBody.payload,
+        nonce = encryptedBody.nonce,
+        tag = encryptedBody.tag,
+        key = ENCRYPTION_KEY,
+    })
+
+    PerformHttpRequest(DECRYPT_URL, function(statusCode, responseText)
+        if statusCode == 200 then
+            callback(json.decode(responseText))
+        else
+            callback(nil)
+        end
+    end, "POST", payload, { ["Content-Type"] = "application/json" })
+end
+
+
+--- Verify a license key with the RMZ API (E2EE mode).
+--- Both success and error responses are encrypted.
+--- @param licenseKey string
+--- @param hwid string|nil
+--- @param callback function  Called with (valid, data_or_error)
+local function VerifyLicense(licenseKey, hwid, callback)
+    local payload = json.encode({
+        product_id = PRODUCT_ID,
+        license_key = licenseKey,
+        hwid = hwid,
+    })
+
+    PerformHttpRequest(API_URL, function(statusCode, responseText, headers)
+        if statusCode == 0 then
+            callback(false, { error = "CONNECTION_ERROR", message = "Could not connect to license server" })
+            return
+        end
+
+        local body = json.decode(responseText)
+
+        -- All responses are encrypted when E2EE is enabled
+        if body and body.encrypted then
+            DecryptResponse(body, function(decrypted)
+                if not decrypted then
+                    callback(false, { error = "DECRYPTION_FAILED", message = "Wrong encryption key" })
+                    return
+                end
+
+                if decrypted.success then
+                    callback(true, decrypted.data)
+                else
+                    callback(false, {
+                        error = decrypted.error or "UNKNOWN",
+                        message = decrypted.message or "Unknown error",
+                    })
+                end
+            end)
+            return
+        end
+
+        if statusCode == 200 and body and body.success then
+            callback(true, body.data)
+        else
+            callback(false, {
+                error = body and body.error or "UNKNOWN",
+                message = body and body.message or "Unknown error",
+            })
+        end
+    end, "POST", payload, { ["Content-Type"] = "application/json" })
+end
+
+
+-- =============================================
+-- Example usage (FiveM server-side)
+-- =============================================
+local LICENSE_KEY = "" -- Replace with your license key
+
+Citizen.CreateThread(function()
+    local hwid = GetHwid()
+    print("[RMZ License] Verifying license (E2EE)...")
+
+    VerifyLicense(LICENSE_KEY, hwid, function(valid, data)
+        if valid then
+            print("[RMZ License] Valid!")
+            print("  Product: " .. data.product.name)
+            print("  Status:  " .. data.status)
+            if data.expires_at then
+                print("  Expires: " .. data.expires_at)
+            end
+        else
+            print("[RMZ License] INVALID: " .. data.error .. " — " .. data.message)
+        end
+    end)
+end)
+```
+
+</CodeGroup>
+
+## Key Functions
+
+| Function | Description |
+|----------|-------------|
+| `GetHwid()` | Generates an identifier from server hostname and max clients |
+| `VerifyLicense(key, hwid, callback)` | Sends a POST via `PerformHttpRequest` and calls back with `(valid, data)` |
+| `DecryptResponse(body, callback)` | (E2EE only) Sends encrypted payload to local Node.js helper for decryption |
+
+## FiveM-Specific Notes
+
+<Note>
+  All HTTP calls in FiveM are **asynchronous**. The `VerifyLicense` function uses a callback pattern rather than returning a value directly. Make sure your resource logic accounts for this.
+</Note>
+
+<Tip>
+  For a simpler setup, consider verifying the license once on resource start inside a `Citizen.CreateThread`. If the license is invalid, call `StopResource(GetCurrentResourceName())` to prevent the resource from running.
+</Tip>

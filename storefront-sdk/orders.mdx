@@ -1,0 +1,129 @@
+---
+title: "Orders"
+description: "Retrieve customer orders, subscriptions, and submit order reviews using sdk.orders."
+---
+
+The `sdk.orders` namespace provides access to a customer's order history, subscriptions, and courses. All methods require the customer to be authenticated (Bearer token set via `sdk.setAuthToken()`).
+
+## Methods
+
+### `orders.getAll(params?)`
+
+Get a paginated list of the customer's orders.
+
+```typescript
+const { data: orders, pagination } = await sdk.orders.getAll({
+  page: 1,
+  per_page: 10
+});
+```
+
+**Parameters:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | `number` | `1` | Page number |
+| `per_page` | `number` | `10` | Orders per page |
+
+**Returns:** `{ data: Order[]; pagination?: Pagination }`
+
+---
+
+### `orders.getById(id)`
+
+Get a specific order by its ID.
+
+```typescript
+const order = await sdk.orders.getById(1234);
+console.log(order.status); // 'completed'
+console.log(order.items);  // OrderItem[]
+```
+
+**Returns:** `Order`
+
+```typescript
+interface Order {
+  id: number;
+  status: string;
+  items: OrderItem[];
+  total: number;
+  created_at: string;
+}
+
+interface OrderItem {
+  id: number;
+  product: Product;
+  quantity: number;
+  price: number;
+}
+```
+
+---
+
+### `orders.getSubscriptions()`
+
+Get the customer's active subscriptions.
+
+```typescript
+const subscriptions = await sdk.orders.getSubscriptions();
+```
+
+**Returns:** `any[]`
+
+---
+
+### `orders.getCourses()`
+
+Get courses the customer has purchased access to.
+
+```typescript
+const courses = await sdk.orders.getCourses();
+```
+
+**Returns:** `any[]`
+
+<Tip>
+For detailed course management (progress tracking, module completion), use the [`sdk.courses`](/storefront-sdk/courses) namespace instead.
+</Tip>
+
+---
+
+### `orders.submitReview(orderId, reviewData)`
+
+Submit a review for a completed order.
+
+```typescript
+const review = await sdk.orders.submitReview(1234, {
+  rating: 5,
+  comment: 'Excellent service and fast delivery!'
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `orderId` | `number` | Order ID to review |
+| `reviewData` | `object` | Review content |
+| `reviewData.rating` | `number` | Rating (1-5) |
+| `reviewData.comment` | `string` | Review text |
+
+**Returns:** `any`
+
+## Example: Order History Page
+
+```typescript
+async function loadOrderHistory(page: number = 1) {
+  const { data: orders, pagination } = await sdk.orders.getAll({
+    page,
+    per_page: 10
+  });
+
+  return {
+    orders,
+    currentPage: pagination?.current_page ?? 1,
+    totalPages: pagination?.last_page ?? 1,
+    hasMore: pagination?.has_more_pages ?? false,
+  };
+}
+```

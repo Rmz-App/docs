@@ -1,0 +1,594 @@
+---
+title: "Manage Cart"
+description: "Add, update, remove, and validate cart items for guest and authenticated customers."
+---
+
+All cart endpoints accept the `X-Cart-Token` header for guest carts. Authenticated customers should also include their `Authorization: Bearer` token.
+
+---
+
+## GET /cart
+
+Get the current cart contents.
+
+### Authentication
+
+Optional. Use `X-Cart-Token` for guest carts or `Authorization: Bearer` for authenticated customers.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Cart-Token | {cart_token} | Yes (guest) |
+| Authorization | Bearer {token} | No |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/cart" \
+  -H "X-Cart-Token: cart_abc123"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart", {
+  headers: { "X-Cart-Token": "cart_abc123" }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/cart", headers={
+    "X-Cart-Token": "cart_abc123"
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])->get("https://front.rmz.gg/api/cart");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "cart_token": "cart_abc123",
+    "items": [
+      {
+        "id": 1,
+        "product_id": 101,
+        "name": "Premium Game Key",
+        "slug": "premium-game-key",
+        "image": {
+          "url": "https://...",
+          "full_link": "https://...",
+          "alt_text": "Premium Game Key"
+        },
+        "quantity": 2,
+        "unit_price": 199.99,
+        "total_price": 399.98,
+        "pricing": {
+          "base_price": 199.99,
+          "addons_price": 0,
+          "subscription_price": 0,
+          "unit_total": 199.99,
+          "formatted": {
+            "base_price": "199.99 ر.س",
+            "addons_price": null,
+            "subscription_price": null,
+            "unit_total": "199.99 ر.س",
+            "total_price": "399.98 ر.س"
+          }
+        },
+        "custom_fields": [],
+        "subscription_plan": null,
+        "notice": null,
+        "product": {
+          "id": 101,
+          "name": "Premium Game Key",
+          "slug": "premium-game-key",
+          "type": "code",
+          "fields": null,
+          "price": {
+            "formatted": "199.99 ر.س"
+          },
+          "image": {
+            "url": "https://...",
+            "full_link": "https://...",
+            "alt_text": "Premium Game Key"
+          }
+        }
+      }
+    ],
+    "count": 2,
+    "subtotal": 399.98,
+    "discount_amount": 0,
+    "total": 399.98,
+    "total_before_tax": 399.98,
+    "coupon": null,
+    "currency": "SAR",
+    "tax": {
+      "enabled": false,
+      "rate": 0,
+      "rate_formatted": "0%",
+      "amount": 0,
+      "amount_formatted": "0.00 ر.س",
+      "country_code": null,
+      "country_name": null
+    }
+  }
+}
+```
+
+---
+
+## POST /cart/add
+
+Add a product to the cart.
+
+### Authentication
+
+Optional. Use `X-Cart-Token` for guest carts.
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Cart-Token | {cart_token} | No (created if absent) |
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| product_id | integer | Yes | Product ID (must belong to the current store) |
+| qty | numeric | Yes | Quantity to add (minimum 1) |
+| fields | array | No | Custom field values (key-value pairs matching product fields) |
+| subscription_plan | integer | No | Subscription variant ID (required for subscription/license products) |
+| notice | string | No | Customer note for this item (max 800 characters) |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/cart/add" \
+  -H "Content-Type: application/json" \
+  -H "X-Cart-Token: cart_abc123" \
+  -d '{
+    "product_id": 101,
+    "qty": 2,
+    "fields": {
+      "platform": "PC"
+    },
+    "notice": "Please include receipt"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/add", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Cart-Token": "cart_abc123"
+  },
+  body: JSON.stringify({
+    product_id: 101,
+    qty: 2,
+    fields: { platform: "PC" },
+    notice: "Please include receipt"
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/cart/add",
+    headers={"X-Cart-Token": "cart_abc123"},
+    json={
+        "product_id": 101,
+        "qty": 2,
+        "fields": {"platform": "PC"},
+        "notice": "Please include receipt"
+    }
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->post("https://front.rmz.gg/api/cart/add", [
+        "product_id" => 101,
+        "qty" => 2,
+        "fields" => ["platform" => "PC"],
+        "notice" => "Please include receipt"
+    ]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+Returns the full cart contents (same format as `GET /cart`).
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "تم إضافة المنتج بنجاح إلى السلة"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Out of stock, product unavailable, required fields missing, subscription already in cart, below minimum quantity, or subscription plan not selected |
+| 422 | Validation error (invalid product_id, missing qty) |
+
+<Warning>
+Subscription and license products can only have a quantity of 1 in the cart. Adding a subscription product that is already in the cart will return an error.
+</Warning>
+
+---
+
+## PATCH /cart/items/{id}
+
+Update the quantity of a cart item.
+
+### Authentication
+
+Optional. Use `X-Cart-Token` for guest carts.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Product ID of the cart item |
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| X-Cart-Token | {cart_token} | Yes (guest) |
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| quantity | integer | Yes | New quantity (set to 0 to remove) |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH "https://front.rmz.gg/api/cart/items/101" \
+  -H "Content-Type: application/json" \
+  -H "X-Cart-Token: cart_abc123" \
+  -d '{"quantity": 3}'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/items/101", {
+  method: "PATCH",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Cart-Token": "cart_abc123"
+  },
+  body: JSON.stringify({ quantity: 3 })
+});
+```
+
+```python Python
+response = requests.patch("https://front.rmz.gg/api/cart/items/101",
+    headers={"X-Cart-Token": "cart_abc123"},
+    json={"quantity": 3}
+)
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->patch("https://front.rmz.gg/api/cart/items/101", ["quantity" => 3]);
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+Returns the full cart contents.
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Cart updated successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Below minimum quantity, exceeds stock, or subscription max quantity exceeded |
+| 404 | Product not found |
+
+---
+
+## DELETE /cart/items/{id}
+
+Remove a specific item from the cart.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Product ID of the cart item to remove |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://front.rmz.gg/api/cart/items/101" \
+  -H "X-Cart-Token: cart_abc123"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/items/101", {
+  method: "DELETE",
+  headers: { "X-Cart-Token": "cart_abc123" }
+});
+```
+
+```python Python
+response = requests.delete("https://front.rmz.gg/api/cart/items/101", headers={
+    "X-Cart-Token": "cart_abc123"
+})
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->delete("https://front.rmz.gg/api/cart/items/101");
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Product removed from cart successfully"
+}
+```
+
+---
+
+## DELETE /cart/clear
+
+Remove all items from the cart.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://front.rmz.gg/api/cart/clear" \
+  -H "X-Cart-Token: cart_abc123"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/clear", {
+  method: "DELETE",
+  headers: { "X-Cart-Token": "cart_abc123" }
+});
+```
+
+```python Python
+response = requests.delete("https://front.rmz.gg/api/cart/clear", headers={
+    "X-Cart-Token": "cart_abc123"
+})
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->delete("https://front.rmz.gg/api/cart/clear");
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Cart cleared successfully"
+}
+```
+
+---
+
+## GET /cart/count
+
+Get the number of items in the cart.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/cart/count" \
+  -H "X-Cart-Token: cart_abc123"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/count", {
+  headers: { "X-Cart-Token": "cart_abc123" }
+});
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/cart/count", headers={
+    "X-Cart-Token": "cart_abc123"
+})
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->get("https://front.rmz.gg/api/cart/count");
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "count": 3,
+    "cart_token": "cart_abc123"
+  }
+}
+```
+
+---
+
+## GET /cart/validate
+
+Validate the cart before proceeding to checkout. Checks stock availability, product status, and other constraints.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/cart/validate" \
+  -H "X-Cart-Token: cart_abc123"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/validate", {
+  headers: { "X-Cart-Token": "cart_abc123" }
+});
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/cart/validate", headers={
+    "X-Cart-Token": "cart_abc123"
+})
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->get("https://front.rmz.gg/api/cart/validate");
+```
+</CodeGroup>
+
+### Response
+
+#### Valid Cart (200)
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Cart is valid"
+}
+```
+
+#### Invalid Cart (400)
+
+```json
+{
+  "success": false,
+  "message": "Cart validation failed",
+  "data": {
+    "errors": [
+      "Product 'Game Key' is out of stock",
+      "Product 'Software License' has been removed"
+    ]
+  }
+}
+```
+
+---
+
+## GET /cart/summary
+
+Get a cart summary including available payment methods and shipping information. Use this before displaying the checkout page.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/cart/summary" \
+  -H "X-Cart-Token: cart_abc123"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/cart/summary", {
+  headers: { "X-Cart-Token": "cart_abc123" }
+});
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/cart/summary", headers={
+    "X-Cart-Token": "cart_abc123"
+})
+```
+
+```php PHP
+$response = Http::withHeaders(["X-Cart-Token" => "cart_abc123"])
+    ->get("https://front.rmz.gg/api/cart/summary");
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "cart_token": "cart_abc123",
+    "items": [...],
+    "count": 2,
+    "subtotal": 399.98,
+    "discount_amount": 0,
+    "total": 399.98,
+    "total_before_tax": 399.98,
+    "coupon": null,
+    "currency": "SAR",
+    "tax": {
+      "enabled": false,
+      "rate": 0,
+      "rate_formatted": "0%",
+      "amount": 0,
+      "amount_formatted": "0.00 ر.س",
+      "country_code": null,
+      "country_name": null
+    },
+    "payment_methods": { ... },
+    "shipping": {
+      "required": false,
+      "cost": 0
+    }
+  }
+}
+```
+
+<Note>
+RMZ is a digital products platform. Shipping is always `required: false` with `cost: 0`.
+</Note>

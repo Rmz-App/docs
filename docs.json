@@ -1,122 +1,275 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "RMZ Developer Docs",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "navigation": {
     "tabs": [
       {
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "getting-started/introduction",
+              "getting-started/quickstart",
+              "getting-started/authentication",
+              "getting-started/rate-limiting",
+              "getting-started/error-handling",
+              "getting-started/environments"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Guides",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/building-a-custom-storefront",
+              "guides/embedding-checkout",
+              "guides/webhook-integration",
+              "guides/license-integration"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Merchant API",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "merchant-api/overview"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Store",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "merchant-api/store"
+            ]
+          },
+          {
+            "group": "Orders",
+            "pages": [
+              "merchant-api/orders/list-orders",
+              "merchant-api/orders/create-order",
+              "merchant-api/orders/get-order",
+              "merchant-api/orders/update-order"
+            ]
+          },
+          {
+            "group": "Products",
+            "pages": [
+              "merchant-api/products/list-products",
+              "merchant-api/products/get-product"
+            ]
+          },
+          {
+            "group": "Categories",
+            "pages": [
+              "merchant-api/categories"
+            ]
+          },
+          {
+            "group": "Subscriptions",
+            "pages": [
+              "merchant-api/subscriptions/list-subscriptions",
+              "merchant-api/subscriptions/get-subscription"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Storefront API (Headless)",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "storefront-api/overview"
+            ]
+          },
+          {
+            "group": "Authentication",
+            "pages": [
+              "storefront-api/authentication/otp-flow",
+              "storefront-api/authentication/guest-cart",
+              "storefront-api/authentication/customer-profile"
+            ]
+          },
+          {
+            "group": "Store & Catalog",
+            "pages": [
+              "storefront-api/store",
+              "storefront-api/products/list-products",
+              "storefront-api/products/get-product",
+              "storefront-api/products/product-reviews",
+              "storefront-api/reviews",
+              "storefront-api/categories"
+            ]
+          },
+          {
+            "group": "Shopping",
+            "pages": [
+              "storefront-api/cart/manage-cart",
+              "storefront-api/cart/coupons",
+              "storefront-api/checkout",
+              "storefront-api/orders"
+            ]
+          },
+          {
+            "group": "Customer Features",
+            "pages": [
+              "storefront-api/wishlist",
+              "storefront-api/courses",
+              "storefront-api/pages",
+              "storefront-api/components"
+            ]
+          },
+          {
+            "group": "Management",
+            "pages": [
+              "storefront-api/management",
+              "storefront-api/custom-tokens",
+              "storefront-api/analytics"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Embed & Webhooks",
+        "groups": [
+          {
+            "group": "Embed API",
+            "pages": [
+              "embed-api/overview",
+              "embed-api/product-info",
+              "embed-api/coupons",
+              "embed-api/authentication",
+              "embed-api/checkout",
+              "embed-api/payment-status"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "webhooks/overview",
+              "webhooks/events",
+              "webhooks/payload-format",
+              "webhooks/signature-verification",
+              "webhooks/reliability"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Licensing",
+        "groups": [
+          {
+            "group": "License Verification",
+            "pages": [
+              "licensing/overview",
+              "licensing/verification",
+              "licensing/lock-types",
+              "licensing/activations",
+              "licensing/plans-and-duration",
+              "licensing/e2ee",
+              "licensing/error-codes"
+            ]
+          },
+          {
+            "group": "Code Examples",
+            "pages": [
+              "licensing/examples/javascript",
+              "licensing/examples/python",
+              "licensing/examples/php",
+              "licensing/examples/lua-fivem"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "SDKs & Integrations",
+        "groups": [
+          {
+            "group": "Storefront SDK",
+            "pages": [
+              "storefront-sdk/overview",
+              "storefront-sdk/authentication",
+              "storefront-sdk/store",
+              "storefront-sdk/products",
+              "storefront-sdk/cart",
+              "storefront-sdk/checkout",
+              "storefront-sdk/orders",
+              "storefront-sdk/customer",
+              "storefront-sdk/wishlist",
+              "storefront-sdk/reviews",
+              "storefront-sdk/courses",
+              "storefront-sdk/management",
+              "storefront-sdk/configuration"
+            ]
+          },
+          {
+            "group": "Framework Guides",
+            "pages": [
+              "storefront-sdk/frameworks/react",
+              "storefront-sdk/frameworks/vue",
+              "storefront-sdk/frameworks/angular",
+              "storefront-sdk/frameworks/vanilla-js"
+            ]
+          },
+          {
+            "group": "FiveM Integration",
+            "pages": [
+              "fivem/overview",
+              "fivem/installation",
+              "fivem/configuration",
+              "fivem/product-setup",
+              "fivem/troubleshooting"
             ]
           }
         ]
       }
     ],
     "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
+      "anchors": []
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
   },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Dashboard",
+        "href": "https://app.rmz.gg"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Get API Key",
+      "href": "https://app.rmz.gg/store/settings"
     }
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/intent/follow?screen_name=rmz_gg",
+      "github": "https://github.com/Rmz-App"
     }
   }
 }

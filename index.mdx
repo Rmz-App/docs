@@ -1,97 +1,61 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: RMZ Developer Docs
+description: Build on the leading digital products platform for the MENA region.
 ---
 
-## Setting up
+# RMZ Developer Documentation
 
-Get your documentation site up and running in minutes.
+RMZ is a multi-tenant e-commerce platform purpose-built for digital products in the MENA region. Merchants use RMZ to sell digital codes, software licenses, subscriptions, online courses, and services — with built-in payment processing, customer management, and storefront hosting.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+These docs cover every API and SDK you need to integrate with the platform, build custom storefronts, verify software licenses, and automate your store operations.
 
-## Make it yours
+## APIs and SDKs
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Merchant API" icon="key" href="/merchant-api/overview">
+    Manage your store programmatically — orders, products, categories, subscriptions, and statistics. Authenticated with Bearer tokens.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Storefront API" icon="store" href="/storefront-api/overview">
+    Build fully custom storefronts. Browse products, manage carts, handle checkout, and authenticate customers with OTP.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Embed API" icon="code" href="/embed-api/overview">
+    Embed a quick-purchase checkout widget for any product on external websites via iframe.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="License Verification" icon="shield-check" href="/licensing/overview">
+    Verify software license keys from your applications. Supports HWID lock, IP lock, activation limits, and E2EE.
   </Card>
-</Columns>
+  <Card title="Storefront SDK" icon="npm" href="/storefront-sdk/overview">
+    TypeScript SDK for the Storefront API. Use it with React, Vue, Angular, or vanilla JS.
+  </Card>
+  <Card title="FiveM Integration" icon="gamepad" href="/fivem/overview">
+    Sell and verify FiveM scripts with built-in license enforcement and IP locking.
+  </Card>
+</CardGroup>
 
-## Create beautiful pages
+## Quick Links
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/getting-started/quickstart">
+    Make your first Merchant API call in under 5 minutes.
+  </Card>
+  <Card title="Authentication" icon="lock" href="/getting-started/authentication">
+    Learn how auth works across all RMZ APIs.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Open Source
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Storefront SDK" icon="github" href="https://github.com/Dokan-E-Commerce/rmz-storefront-sdk">
+    TypeScript SDK for building headless storefronts.
+  </Card>
+  <Card title="Next.js Example" icon="github" href="https://github.com/Dokan-E-Commerce/rmz-storefront-nextjs">
+    Full example storefront built with Next.js and the Storefront SDK.
+  </Card>
+  <Card title="FiveM Resource" icon="github" href="https://github.com/Rmz-App/rmz-fivem">
+    FiveM server resource for license verification.
+  </Card>
+  <Card title="License Examples" icon="github" href="https://github.com/Rmz-App/rmz-license-examples">
+    License verification examples in Python, PHP, Node.js, and Lua.
+  </Card>
+</CardGroup>

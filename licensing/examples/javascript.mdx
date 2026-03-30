@@ -1,0 +1,277 @@
+---
+title: "Node.js Examples"
+description: "Complete Node.js examples for license verification, with and without end-to-end encryption."
+---
+
+Full working Node.js examples for the RMZ license verification API. Requires Node.js 18+ (uses built-in `fetch`). No external dependencies needed -- even E2EE uses the built-in `crypto` module.
+
+All examples are available on GitHub: [github.com/Rmz-App/rmz-license-examples](https://github.com/Rmz-App/rmz-license-examples)
+
+## Plain Verification
+
+<CodeGroup>
+
+```javascript verify.js
+/**
+ * RMZ License Verification — Node.js (without E2EE)
+ * https://license.rmz.gg
+ *
+ * No dependencies required — uses built-in fetch (Node 18+) or install node-fetch.
+ */
+
+// =============================================
+// Configuration — change these values
+// =============================================
+const PRODUCT_ID = 0; // Replace with your product ID from the dashboard
+const API_URL = "https://license.rmz.gg/verify";
+
+
+/**
+ * Generate a unique hardware ID for this machine.
+ */
+function getHwid() {
+    const crypto = require("crypto");
+    const os = require("os");
+    const raw = `${os.hostname()}-${os.arch()}-${os.platform()}`;
+    return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 32);
+}
+
+
+/**
+ * Verify a license key with the RMZ API.
+ *
+ * @param {string} licenseKey - The license key to verify
+ * @param {string|null} hwid - Hardware ID for device binding
+ * @returns {Promise<{valid: boolean, data?: object, error?: string, message?: string}>}
+ */
+async function verifyLicense(licenseKey, hwid = null) {
+    const payload = {
+        product_id: PRODUCT_ID,
+        license_key: licenseKey,
+    };
+    if (hwid) payload.hwid = hwid;
+
+    try {
+        const resp = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const body = await resp.json();
+
+        if (resp.ok && body.success) {
+            return { valid: true, data: body.data };
+        }
+        return {
+            valid: false,
+            error: body.error || "UNKNOWN",
+            message: body.message || "Unknown error",
+        };
+    } catch (e) {
+        return { valid: false, error: "CONNECTION_ERROR", message: e.message };
+    }
+}
+
+
+// =============================================
+// Example usage
+// =============================================
+(async () => {
+    const hwid = getHwid();
+    console.log(`Machine HWID: ${hwid}`);
+
+    const readline = require("readline");
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+    rl.question("Enter your license key: ", async (licenseKey) => {
+        const result = await verifyLicense(licenseKey.trim(), hwid);
+
+        if (result.valid) {
+            const info = result.data;
+            console.log(`\n  Status:  ${info.status}`);
+            console.log(`  Product: ${info.product.name}`);
+            if (info.plan) {
+                console.log(`  Plan:    ${info.plan.duration_label}`);
+                console.log(`  Start:   ${info.plan.start_date}`);
+                console.log(`  End:     ${info.plan.end_date}`);
+            }
+            if (info.expires_at) {
+                console.log(`  Expires: ${info.expires_at} (${info.expires_in_days} days left)`);
+            }
+            console.log(`  Devices: ${info.activations.current}/${info.activations.max || "unlimited"}`);
+        } else {
+            console.log(`\n  Error:   ${result.error}`);
+            console.log(`  Message: ${result.message}`);
+        }
+
+        rl.close();
+    });
+})();
+```
+
+</CodeGroup>
+
+## With E2EE
+
+When E2EE is enabled on your product, all responses are AES-256-GCM encrypted. This example decrypts them using Node.js built-in `crypto`.
+
+<CodeGroup>
+
+```javascript verify_e2ee.js
+/**
+ * RMZ License Verification — Node.js (with E2EE)
+ * https://license.rmz.gg
+ *
+ * All API responses are AES-256-GCM encrypted. This prevents
+ * man-in-the-middle attacks and local proxy spoofing.
+ *
+ * No dependencies required — uses built-in crypto and fetch (Node 18+).
+ */
+
+const crypto = require("crypto");
+
+// =============================================
+// Configuration — change these values
+// =============================================
+const PRODUCT_ID = 0; // Replace with your product ID from the dashboard
+const ENCRYPTION_KEY = ""; // Replace with your 64-character hex key from product settings
+const API_URL = "https://license.rmz.gg/verify";
+
+
+/**
+ * Generate a unique hardware ID for this machine.
+ */
+function getHwid() {
+    const os = require("os");
+    const raw = `${os.hostname()}-${os.arch()}-${os.platform()}`;
+    return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 32);
+}
+
+
+/**
+ * Decrypt an AES-256-GCM encrypted API response.
+ *
+ * @param {object} body - The response with 'payload', 'nonce', 'tag' fields
+ * @returns {object|null} The decrypted data, or null if decryption fails
+ */
+function decryptResponse(body) {
+    try {
+        const key = Buffer.from(ENCRYPTION_KEY, "hex");
+        const nonce = Buffer.from(body.nonce, "base64");
+        const tag = Buffer.from(body.tag, "base64");
+        const ciphertext = Buffer.from(body.payload, "base64");
+
+        const decipher = crypto.createDecipheriv("aes-256-gcm", key, nonce);
+        decipher.setAuthTag(tag);
+
+        let plaintext = decipher.update(ciphertext, null, "utf8");
+        plaintext += decipher.final("utf8");
+
+        return JSON.parse(plaintext);
+    } catch {
+        return null;
+    }
+}
+
+
+/**
+ * Verify a license key with the RMZ API (E2EE mode).
+ * Both success and error responses are encrypted.
+ *
+ * @param {string} licenseKey - The license key to verify
+ * @param {string|null} hwid - Hardware ID for device binding
+ * @returns {Promise<{valid: boolean, data?: object, error?: string, message?: string}>}
+ */
+async function verifyLicense(licenseKey, hwid = null) {
+    const payload = {
+        product_id: PRODUCT_ID,
+        license_key: licenseKey,
+    };
+    if (hwid) payload.hwid = hwid;
+
+    try {
+        const resp = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        let body = await resp.json();
+
+        // All responses are encrypted when E2EE is enabled
+        if (body.encrypted) {
+            body = decryptResponse(body);
+            if (!body) {
+                return { valid: false, error: "DECRYPTION_FAILED", message: "Wrong encryption key" };
+            }
+        }
+
+        if (body.success) {
+            return { valid: true, data: body.data };
+        }
+        return {
+            valid: false,
+            error: body.error || "UNKNOWN",
+            message: body.message || "Unknown error",
+        };
+    } catch (e) {
+        return { valid: false, error: "CONNECTION_ERROR", message: e.message };
+    }
+}
+
+
+// =============================================
+// Example usage
+// =============================================
+(async () => {
+    const hwid = getHwid();
+    console.log(`Machine HWID: ${hwid}`);
+
+    const readline = require("readline");
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+    rl.question("Enter your license key: ", async (licenseKey) => {
+        const result = await verifyLicense(licenseKey.trim(), hwid);
+
+        if (result.valid) {
+            const info = result.data;
+            console.log(`\n  Status:  ${info.status}`);
+            console.log(`  Product: ${info.product.name}`);
+            if (info.plan) {
+                console.log(`  Plan:    ${info.plan.duration_label}`);
+                console.log(`  Start:   ${info.plan.start_date}`);
+                console.log(`  End:     ${info.plan.end_date}`);
+            }
+            if (info.expires_at) {
+                console.log(`  Expires: ${info.expires_at} (${info.expires_in_days} days left)`);
+            }
+            console.log(`  Devices: ${info.activations.current}/${info.activations.max || "unlimited"}`);
+        } else {
+            console.log(`\n  Error:   ${result.error}`);
+            console.log(`  Message: ${result.message}`);
+        }
+
+        rl.close();
+    });
+})();
+```
+
+</CodeGroup>
+
+## Key Functions
+
+| Function | Description |
+|----------|-------------|
+| `getHwid()` | Generates a SHA-256 hash from hostname, architecture, and platform |
+| `verifyLicense(key, hwid)` | Sends a POST request to the API and returns `{ valid, data }` or `{ valid, error, message }` |
+| `decryptResponse(body)` | (E2EE only) Decrypts AES-256-GCM response using the encryption key |
+
+## Dependencies
+
+| Mode | Dependencies |
+|------|-------------|
+| Without E2EE | None (built-in `fetch` in Node 18+) |
+| With E2EE | None (built-in `crypto` module) |
+
+<Note>
+  If you are using Node.js older than 18, install `node-fetch` as a dependency and import it: `const fetch = require("node-fetch")`.
+</Note>

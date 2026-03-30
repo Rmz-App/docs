@@ -1,0 +1,293 @@
+---
+title: "Homepage Components"
+description: "Retrieve configurable homepage components including banners, product lists, features, and reviews."
+---
+
+Components are the building blocks of a store's homepage. Store owners configure them in the dashboard. Component types include banners, product lists, features, reviews, and custom content.
+
+---
+
+## GET /components
+
+Get all homepage components for the store, sorted by display order.
+
+### Authentication
+
+None required.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/components"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/components");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/components")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/components");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "type": "banner",
+      "name": "Main Banner",
+      "data": {
+        "type": "carousel",
+        "images": [
+          {
+            "id": 1,
+            "url": "https://...",
+            "full_link": "https://...",
+            "alt_text": "Summer Sale",
+            "link_url": "/categories/summer-deals",
+            "sort_order": 0
+          }
+        ],
+        "settings": {}
+      },
+      "sort_order": 1,
+      "settings": {}
+    },
+    {
+      "id": 2,
+      "type": "product-list",
+      "name": "Best Sellers",
+      "data": {
+        "title": "Best Sellers",
+        "products": [
+          {
+            "id": 101,
+            "name": "Premium Game Key",
+            "slug": "premium-game-key",
+            "price": 199.99,
+            "image": { "url": "https://..." }
+          }
+        ],
+        "view_all_link": "/categories/games",
+        "settings": {},
+        "options": {}
+      },
+      "sort_order": 2,
+      "settings": {}
+    },
+    {
+      "id": 3,
+      "type": "feature",
+      "name": "Store Features",
+      "data": {
+        "features": [
+          { "title": "Instant Delivery", "description": "Digital products delivered instantly", "icon": "bolt" }
+        ],
+        "settings": {}
+      },
+      "sort_order": 3,
+      "settings": {}
+    },
+    {
+      "id": 4,
+      "type": "reviews",
+      "name": "Customer Reviews",
+      "data": {
+        "reviews": [
+          {
+            "id": 1,
+            "rating": 5,
+            "comment": "Great store!",
+            "reviewer": { "name": "Ahmed Ali" },
+            "created_at": "2024-06-15"
+          }
+        ],
+        "settings": {}
+      },
+      "sort_order": 4,
+      "settings": {}
+    }
+  ]
+}
+```
+
+### Component Types
+
+| Type | Description |
+|------|-------------|
+| `banner` | Image banner (single or carousel). Contains `images` array with URLs and links. |
+| `product-list` | Curated product list. Supports best sellers, latest, category-based, and manually selected products. |
+| `feature` | Store feature highlights with title, description, and optional icon. |
+| `reviews` | Customer reviews section showing published store reviews. |
+| `custom` | Custom content block with arbitrary HTML content. |
+
+---
+
+## GET /components/{id}
+
+Get a specific component by ID.
+
+### Authentication
+
+None required.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Component ID |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/components/2"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/components/2");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/components/2")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/components/2");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 2,
+    "type": "best_sellers",
+    "name": "Best Sellers",
+    "data": {
+      "title": "Best Sellers",
+      "products": [...],
+      "view_all_link": "/categories/games",
+      "settings": {},
+      "options": {}
+    },
+    "sort_order": 2,
+    "settings": {}
+  }
+}
+```
+
+<Note>
+The `type` field in the single-component response returns the raw component type (e.g., `best_sellers`, `moving_group`, `latest`) rather than the mapped type used in the list endpoint (`product-list`, `banner`, etc.).
+</Note>
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 404 | Component not found |
+
+---
+
+## GET /components/{id}/products
+
+Get paginated products for a product-list component.
+
+### Authentication
+
+None required.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | integer | Component ID (must be a `product-list` type) |
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| per_page | integer | No | Products per page (1-50). Default: `12` |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/components/2/products?per_page=12"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/components/2/products?per_page=12");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/components/2/products", params={"per_page": 12})
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/components/2/products", ["per_page" => 12]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 101,
+      "name": "Premium Game Key",
+      "slug": "premium-game-key",
+      "type": "code",
+      "price": 199.99,
+      "image": { "url": "https://..." },
+      "categories": []
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 2,
+    "per_page": 12,
+    "total": 20,
+    "from": 1,
+    "to": 12,
+    "has_more_pages": true,
+    "next_page_url": "...",
+    "prev_page_url": null
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Component is not a product-list type |
+| 404 | Component not found |

@@ -1,0 +1,97 @@
+---
+title: "Webhooks Overview"
+description: "Receive real-time notifications when events happen in your RMZ store."
+---
+
+RMZ webhooks send HTTP POST requests to your server whenever specific events occur in your store, such as a new order being created or an order status changing. This lets you build real-time integrations without polling the API.
+
+<Note>
+  Webhooks require an **RMZ+** subscription plan. You can manage webhooks from your store dashboard.
+</Note>
+
+## How Webhooks Work
+
+<Steps>
+
+<Step title="Configure a webhook">
+  In your dashboard, create a webhook by specifying the event type, destination URL, and retry settings.
+</Step>
+
+<Step title="Event occurs">
+  When a matching event happens (e.g., a customer places an order), RMZ builds the payload and queues the webhook for delivery.
+</Step>
+
+<Step title="Payload delivered">
+  RMZ sends an HTTP POST request to your URL with the event data as JSON. Custom headers identify the request.
+</Step>
+
+<Step title="Your server responds">
+  Return a 2xx status code to acknowledge receipt. Non-2xx responses trigger retries based on your configuration.
+</Step>
+
+</Steps>
+
+## Setting Up a Webhook
+
+Navigate to **Dashboard > Settings > Webhooks** and click **Add Webhook**.
+
+### Configuration Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Name** | No | A label for your reference (e.g., "Order notifications") |
+| **Event** | Yes | The event type to listen for (e.g., `order.created`) |
+| **URL** | Yes | The HTTPS endpoint that will receive the webhook POST requests |
+| **Tries** | Yes | Number of delivery attempts (1 to 5) |
+| **Enabled** | No | Toggle the webhook on or off (default: off) |
+
+When you create a webhook, a **secret key** is auto-generated (28 random characters). This key can be used to verify webhook authenticity if you implement signature verification on your end.
+
+<Note>
+  Webhook payload signing is **not enabled by default**. The secret key is generated and stored, but the `Signature` header is only included when signing is explicitly enabled for the webhook. See [Signature Verification](/webhooks/signature-verification) for details.
+</Note>
+
+<Warning>
+  Store your webhook secret key securely. If you suspect it has been compromised, delete the webhook and create a new one.
+</Warning>
+
+## Managing Webhooks
+
+From the webhooks settings page, you can:
+
+- **Create** new webhooks with different events and URLs
+- **Update** the name, event, URL, tries, or enabled status of existing webhooks
+- **Delete** webhooks you no longer need
+- **Toggle** webhooks on/off without deleting them
+
+## Discord Integration
+
+RMZ automatically detects Discord webhook URLs and transforms the payload into a Discord embed format. If your webhook URL contains `discord`, the payload is converted to a rich embed with order details, customer info, and status — no middleware needed on your end.
+
+## Request Headers
+
+Every webhook request includes these headers:
+
+| Header | Description |
+|--------|-------------|
+| `Content-Type` | `application/json` |
+| `X-RMZ-WEBHOOKS` | API version (`1.2`) |
+| `X-RMZ-REQUEST-ID` | Unique request ID for tracking and deduplication |
+| `Signature` | HMAC-SHA256 signature (**only present** when signing is enabled for the webhook -- not included by default) |
+
+## Quick Links
+
+<CardGroup cols={2}>
+  <Card title="Events" href="/webhooks/events">
+    See all available webhook event types.
+  </Card>
+  <Card title="Payload Format" href="/webhooks/payload-format">
+    Full payload structure with field descriptions.
+  </Card>
+  <Card title="Signature Verification" href="/webhooks/signature-verification">
+    Verify webhook authenticity with HMAC signatures.
+  </Card>
+  <Card title="Reliability" href="/webhooks/reliability">
+    Retry strategy, timeouts, and delivery guarantees.
+  </Card>
+</CardGroup>

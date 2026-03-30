@@ -1,0 +1,130 @@
+---
+title: "Guest Cart & Cart Tokens"
+description: "How unauthenticated visitors can manage shopping carts using the X-Cart-Token header."
+---
+
+Guest visitors can browse products and manage a shopping cart without authenticating. Cart state is tracked via a cart token passed in the `X-Cart-Token` header.
+
+## How It Works
+
+1. When a guest adds their first item to the cart, the API creates a cart and returns a `cart_token` in the response
+2. Store this token on the client (e.g., in `localStorage` or a cookie)
+3. Include it in all subsequent cart and checkout requests via the `X-Cart-Token` header
+4. When the customer authenticates, the cart is associated with their account and a `cart_token` is returned in the auth response
+
+## X-Cart-Token Header
+
+```
+X-Cart-Token: cart_abc123
+```
+
+Include this header on all cart-related requests:
+
+- `GET /cart`
+- `POST /cart/add`
+- `PATCH /cart/items/{id}`
+- `DELETE /cart/items/{id}`
+- `DELETE /cart/clear`
+- `GET /cart/count`
+- `GET /cart/validate`
+- `GET /cart/summary`
+- `POST /cart/coupon`
+- `DELETE /cart/coupon`
+- `POST /checkout`
+
+## Example: Guest Cart Flow
+
+<CodeGroup>
+```javascript JavaScript
+// 1. Add item to cart (first time, no token yet)
+const addResponse = await fetch("https://front.rmz.gg/api/cart/add", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ product_id: 101, qty: 1 })
+});
+const addData = await addResponse.json();
+
+// 2. Store the cart token from the response
+const cartToken = addData.data.cart_token;
+localStorage.setItem("cart_token", cartToken);
+
+// 3. Use the token for subsequent requests
+const cartResponse = await fetch("https://front.rmz.gg/api/cart", {
+  headers: { "X-Cart-Token": cartToken }
+});
+const cart = await cartResponse.json();
+```
+
+```python Python
+import requests
+
+# 1. Add item to cart
+add_response = requests.post("https://front.rmz.gg/api/cart/add", json={
+    "product_id": 101,
+    "qty": 1
+})
+cart_token = add_response.json()["data"]["cart_token"]
+
+# 2. Use the token for subsequent requests
+cart_response = requests.get("https://front.rmz.gg/api/cart", headers={
+    "X-Cart-Token": cart_token
+})
+cart = cart_response.json()
+```
+
+```php PHP
+// 1. Add item to cart
+$addResponse = Http::post("https://front.rmz.gg/api/cart/add", [
+    "product_id" => 101,
+    "qty" => 1
+]);
+$cartToken = $addResponse->json()["data"]["cart_token"];
+
+// 2. Use the token for subsequent requests
+$cartResponse = Http::withHeaders([
+    "X-Cart-Token" => $cartToken
+])->get("https://front.rmz.gg/api/cart");
+$cart = $cartResponse->json();
+```
+</CodeGroup>
+
+## Cart Token After Authentication
+
+When a customer authenticates via the OTP flow, the verify response includes a `cart_token`. Use this token for all subsequent cart operations alongside the `Authorization` header.
+
+```json
+{
+  "success": true,
+  "data": {
+    "type": "authenticated",
+    "token": "1|abc123xyz...",
+    "cart_token": "cart_xyz789",
+    "customer": { ... }
+  }
+}
+```
+
+For authenticated checkout requests, include both headers:
+
+```bash
+curl -X POST "https://front.rmz.gg/api/checkout" \
+  -H "Authorization: Bearer 1|abc123xyz..." \
+  -H "X-Cart-Token: cart_xyz789" \
+  -H "Content-Type: application/json"
+```
+
+<Tip>
+Always persist the cart token on the client side. If the token is lost, the guest cart cannot be recovered.
+</Tip>
+
+## Public Endpoints (No Auth Required)
+
+The following endpoints work without any authentication and do not require a cart token:
+
+- All `GET /store/*` endpoints
+- All `GET /products/*` endpoints
+- All `GET /categories/*` endpoints
+- All `GET /pages/*` endpoints
+- All `GET /components/*` endpoints
+- All `GET /reviews/*` endpoints
+- `GET /featured-products`

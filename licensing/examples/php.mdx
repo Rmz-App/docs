@@ -1,0 +1,288 @@
+---
+title: "PHP Examples"
+description: "Complete PHP examples for license verification, with and without end-to-end encryption."
+---
+
+Full working PHP examples for the RMZ license verification API. No external dependencies needed -- uses built-in cURL and OpenSSL.
+
+All examples are available on GitHub: [github.com/Rmz-App/rmz-license-examples](https://github.com/Rmz-App/rmz-license-examples)
+
+## Dependencies
+
+| Mode | Dependencies |
+|------|-------------|
+| Without E2EE | cURL extension (built-in) |
+| With E2EE | OpenSSL extension (built-in, PHP 7.1+) |
+
+## Plain Verification
+
+<CodeGroup>
+
+```php verify.php
+<?php
+/**
+ * RMZ License Verification — PHP (without E2EE)
+ * https://license.rmz.gg
+ *
+ * No dependencies required — uses built-in cURL.
+ */
+
+// =============================================
+// Configuration — change these values
+// =============================================
+define('PRODUCT_ID', 0);  // Replace with your product ID from the dashboard
+define('API_URL', 'https://license.rmz.gg/verify');
+
+
+/**
+ * Generate a unique hardware ID for this machine.
+ */
+function get_hwid(): string
+{
+    $raw = php_uname('n') . '-' . php_uname('m') . '-' . php_uname('s');
+    return substr(hash('sha256', $raw), 0, 32);
+}
+
+
+/**
+ * Verify a license key with the RMZ API.
+ *
+ * @param string $licenseKey  The license key to verify
+ * @param string|null $hwid   Hardware ID for device binding
+ * @return array  ['valid' => bool, 'data' => [...]] or ['valid' => false, 'error' => '...', 'message' => '...']
+ */
+function verify_license(string $licenseKey, ?string $hwid = null): array
+{
+    $payload = [
+        'product_id' => PRODUCT_ID,
+        'license_key' => $licenseKey,
+    ];
+    if ($hwid) {
+        $payload['hwid'] = $hwid;
+    }
+
+    $ch = curl_init(API_URL);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        return ['valid' => false, 'error' => 'CONNECTION_ERROR', 'message' => $error];
+    }
+
+    $body = json_decode($response, true);
+
+    if ($httpCode === 200 && ($body['success'] ?? false)) {
+        return ['valid' => true, 'data' => $body['data']];
+    }
+
+    return [
+        'valid' => false,
+        'error' => $body['error'] ?? 'UNKNOWN',
+        'message' => $body['message'] ?? 'Unknown error',
+    ];
+}
+
+
+// =============================================
+// Example usage
+// =============================================
+$hwid = get_hwid();
+echo "Machine HWID: $hwid\n";
+
+echo "Enter your license key: ";
+$licenseKey = trim(fgets(STDIN));
+
+$result = verify_license($licenseKey, $hwid);
+
+if ($result['valid']) {
+    $info = $result['data'];
+    echo "\n  Status:  {$info['status']}\n";
+    echo "  Product: {$info['product']['name']}\n";
+    if (!empty($info['plan'])) {
+        echo "  Plan:    {$info['plan']['duration_label']}\n";
+        echo "  Start:   {$info['plan']['start_date']}\n";
+        echo "  End:     {$info['plan']['end_date']}\n";
+    }
+    if (!empty($info['expires_at'])) {
+        echo "  Expires: {$info['expires_at']} ({$info['expires_in_days']} days left)\n";
+    }
+    $max = $info['activations']['max'] ?? 'unlimited';
+    echo "  Devices: {$info['activations']['current']}/{$max}\n";
+} else {
+    echo "\n  Error:   {$result['error']}\n";
+    echo "  Message: {$result['message']}\n";
+}
+```
+
+</CodeGroup>
+
+## With E2EE
+
+When E2EE is enabled, all responses are AES-256-GCM encrypted. This example decrypts them using PHP's built-in `openssl_decrypt`.
+
+<CodeGroup>
+
+```php verify_e2ee.php
+<?php
+/**
+ * RMZ License Verification — PHP (with E2EE)
+ * https://license.rmz.gg
+ *
+ * All API responses are AES-256-GCM encrypted. This prevents
+ * man-in-the-middle attacks and local proxy spoofing.
+ *
+ * Requires PHP 7.1+ with OpenSSL extension (enabled by default).
+ */
+
+// =============================================
+// Configuration — change these values
+// =============================================
+define('PRODUCT_ID', 0);  // Replace with your product ID from the dashboard
+define('ENCRYPTION_KEY', '');  // Replace with your 64-character hex key from product settings
+define('API_URL', 'https://license.rmz.gg/verify');
+
+
+/**
+ * Generate a unique hardware ID for this machine.
+ */
+function get_hwid(): string
+{
+    $raw = php_uname('n') . '-' . php_uname('m') . '-' . php_uname('s');
+    return substr(hash('sha256', $raw), 0, 32);
+}
+
+
+/**
+ * Decrypt an AES-256-GCM encrypted API response.
+ *
+ * @param array $body  The response with 'payload', 'nonce', 'tag' fields
+ * @return array|null  The decrypted data, or null if decryption fails
+ */
+function decrypt_response(array $body): ?array
+{
+    $key = hex2bin(ENCRYPTION_KEY);
+    $nonce = base64_decode($body['nonce']);
+    $tag = base64_decode($body['tag']);
+    $ciphertext = base64_decode($body['payload']);
+
+    $plaintext = openssl_decrypt($ciphertext, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag);
+
+    if ($plaintext === false) {
+        return null;
+    }
+
+    return json_decode($plaintext, true);
+}
+
+
+/**
+ * Verify a license key with the RMZ API (E2EE mode).
+ * Both success and error responses are encrypted.
+ *
+ * @param string $licenseKey  The license key to verify
+ * @param string|null $hwid   Hardware ID for device binding
+ * @return array  ['valid' => bool, 'data' => [...]] or ['valid' => false, 'error' => '...', 'message' => '...']
+ */
+function verify_license(string $licenseKey, ?string $hwid = null): array
+{
+    $payload = [
+        'product_id' => PRODUCT_ID,
+        'license_key' => $licenseKey,
+    ];
+    if ($hwid) {
+        $payload['hwid'] = $hwid;
+    }
+
+    $ch = curl_init(API_URL);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+
+    $response = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        return ['valid' => false, 'error' => 'CONNECTION_ERROR', 'message' => $error];
+    }
+
+    $body = json_decode($response, true);
+
+    // All responses are encrypted when E2EE is enabled
+    if (!empty($body['encrypted'])) {
+        $body = decrypt_response($body);
+        if ($body === null) {
+            return ['valid' => false, 'error' => 'DECRYPTION_FAILED', 'message' => 'Wrong encryption key'];
+        }
+    }
+
+    if ($body['success'] ?? false) {
+        return ['valid' => true, 'data' => $body['data']];
+    }
+
+    return [
+        'valid' => false,
+        'error' => $body['error'] ?? 'UNKNOWN',
+        'message' => $body['message'] ?? 'Unknown error',
+    ];
+}
+
+
+// =============================================
+// Example usage
+// =============================================
+$hwid = get_hwid();
+echo "Machine HWID: $hwid\n";
+
+echo "Enter your license key: ";
+$licenseKey = trim(fgets(STDIN));
+
+$result = verify_license($licenseKey, $hwid);
+
+if ($result['valid']) {
+    $info = $result['data'];
+    echo "\n  Status:  {$info['status']}\n";
+    echo "  Product: {$info['product']['name']}\n";
+    if (!empty($info['plan'])) {
+        echo "  Plan:    {$info['plan']['duration_label']}\n";
+        echo "  Start:   {$info['plan']['start_date']}\n";
+        echo "  End:     {$info['plan']['end_date']}\n";
+    }
+    if (!empty($info['expires_at'])) {
+        echo "  Expires: {$info['expires_at']} ({$info['expires_in_days']} days left)\n";
+    }
+    $max = $info['activations']['max'] ?? 'unlimited';
+    echo "  Devices: {$info['activations']['current']}/{$max}\n";
+} else {
+    echo "\n  Error:   {$result['error']}\n";
+    echo "  Message: {$result['message']}\n";
+}
+```
+
+</CodeGroup>
+
+## Key Functions
+
+| Function | Description |
+|----------|-------------|
+| `get_hwid()` | Generates a SHA-256 hash from hostname, machine type, and OS name |
+| `verify_license($key, $hwid)` | Sends a cURL POST request to the API and returns an associative array |
+| `decrypt_response($body)` | (E2EE only) Decrypts AES-256-GCM response using `openssl_decrypt` |
+
+<Note>
+  PHP's `openssl_decrypt` with `aes-256-gcm` accepts the authentication tag as a separate parameter, unlike Python's `cryptography` library which expects it concatenated with the ciphertext.
+</Note>

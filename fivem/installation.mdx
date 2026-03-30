@@ -1,0 +1,82 @@
+---
+title: "Installation"
+description: "Download, configure, and start the RMZ FiveM resource on your game server."
+---
+
+## Installation Steps
+
+<Steps>
+  <Step title="Download the resource">
+    Choose one of the following methods:
+
+    **Option A -- Git clone:**
+    ```bash
+    cd resources
+    git clone https://github.com/Rmz-App/rmz-fivem.git rmz-fivem
+    ```
+
+    **Option B -- Download ZIP:**
+    1. Go to [github.com/Rmz-App/rmz-fivem](https://github.com/Rmz-App/rmz-fivem)
+    2. Click the green **Code** button and select **Download ZIP**
+    3. Extract the folder into your server's `resources/` directory
+    4. Rename the folder to `rmz-fivem` if needed
+  </Step>
+  <Step title="Get your secret key">
+    1. Go to your [RMZ dashboard](https://app.rmz.gg)
+    2. Navigate to **Benefits** > **FiveM Servers**
+    3. Click **Add Server**
+    4. Copy the generated secret key
+  </Step>
+  <Step title="Configure config.lua">
+    Open `config.lua` in the resource folder and set your secret key:
+
+    ```lua
+    Config.SecretKey = 'rmz_fivem_YOUR_SECRET_KEY_HERE'
+    ```
+
+    See [Configuration](/fivem/configuration) for all available settings.
+  </Step>
+  <Step title="Add to server.cfg">
+    Add the following line to your `server.cfg`:
+
+    ```
+    ensure rmz-fivem
+    ```
+  </Step>
+  <Step title="Restart your server">
+    Restart the server (or run `restart rmz-fivem` in the console). You should see the following output in your server console:
+
+    ```
+    [RMZ] =============================================
+    [RMZ]  RMZ FiveM Integration v1.0.0
+    [RMZ]  Poll interval: 10s
+    [RMZ]  Debug: false
+    [RMZ]  Notifications: true
+    [RMZ] =============================================
+    ```
+
+    If you see this output, the resource is running and polling for commands.
+  </Step>
+</Steps>
+
+## Verify the Connection
+
+After starting the resource, check the **FiveM Servers** page in your RMZ dashboard:
+
+- **Connected** (green) -- the resource is polling successfully
+- **Disconnected** (grey) -- no poll received in the last 2 minutes
+
+<Warning>
+  Never share your secret key or commit your modified `config.lua` to a public repository. Add it to your `.gitignore` file.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/fivem/configuration">
+    Adjust poll interval, debug mode, and notifications
+  </Card>
+  <Card title="Product Setup" icon="box" href="/fivem/product-setup">
+    Create products with FiveM commands
+  </Card>
+</CardGroup>

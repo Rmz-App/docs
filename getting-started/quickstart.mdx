@@ -1,0 +1,146 @@
+---
+title: Quickstart
+description: Make your first Merchant API call in under 5 minutes.
+---
+
+# Quickstart
+
+This guide walks you through making your first Merchant API call. By the end, you will have retrieved your store statistics using a Bearer token.
+
+## Prerequisites
+
+- An RMZ store on the **RMZ+ plan**
+- An API token (generated from your dashboard)
+
+## Step 1: Get Your API Token
+
+1. Log in to your [RMZ Dashboard](https://app.rmz.gg)
+2. Go to **Settings > API Keys**
+3. Click **Generate Token** and copy the value
+
+<Warning>
+  Your API token grants full access to your store data. Keep it secret and never expose it in client-side code.
+</Warning>
+
+## Step 2: Make Your First Request
+
+Use the token to fetch your store information:
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/store" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Accept: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch("https://merchant-api.rmz.gg/shawarma/store", {
+  headers: {
+    "Authorization": "Bearer YOUR_API_TOKEN",
+    "Accept": "application/json"
+  }
+});
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://merchant-api.rmz.gg/shawarma/store",
+    headers={
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Accept": "application/json"
+    }
+)
+print(response.json())
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/store");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Accept: application/json"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+print_r($response);
+```
+</CodeGroup>
+
+## Step 3: Check the Response
+
+A successful response looks like this:
+
+```json
+{
+  "message": null,
+  "data": {
+    "id": 1,
+    "name": "My Store",
+    "slug": "my-store",
+    "logo": "https://...",
+    "description": "..."
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## Step 4: Get Store Statistics
+
+Now fetch your store stats:
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/store/statics" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const stats = await fetch("https://merchant-api.rmz.gg/shawarma/store/statics", {
+  headers: { "Authorization": "Bearer YOUR_API_TOKEN" }
+}).then(r => r.json());
+
+console.log(`Total sales: ${stats.data.sales_total}`);
+console.log(`Orders: ${stats.data.sales_count}`);
+console.log(`Customers: ${stats.data.customers_count}`);
+```
+</CodeGroup>
+
+```json Response
+{
+  "message": null,
+  "data": {
+    "sales_total": 125750.50,
+    "sales_count": 342,
+    "customers_count": 156,
+    "products_count": 23,
+    "categories_count": 5,
+    "subscribers_count": 45,
+    "pages_count": 3,
+    "coupons_count": 8,
+    "duration": "lifetime"
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## What's Next
+
+<CardGroup cols={2}>
+  <Card title="List Orders" icon="list" href="/merchant-api/orders/list-orders">
+    Fetch and filter your store orders.
+  </Card>
+  <Card title="Create an Order" icon="plus" href="/merchant-api/orders/create-order">
+    Create orders programmatically via the API.
+  </Card>
+  <Card title="Authentication Deep Dive" icon="lock" href="/getting-started/authentication">
+    Learn about all auth patterns across RMZ APIs.
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/getting-started/error-handling">
+    Handle errors and edge cases gracefully.
+  </Card>
+</CardGroup>

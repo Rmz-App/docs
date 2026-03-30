@@ -1,0 +1,166 @@
+---
+title: "Vanilla JavaScript"
+description: "Use the Storefront SDK via CDN or UMD bundle without any framework."
+---
+
+The SDK can be used without a framework by loading it via a CDN `<script>` tag or importing the UMD bundle.
+
+## CDN / Script Tag
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/rmz-storefront-sdk@latest/dist/index.umd.js"></script>
+</head>
+<body>
+  <div id="products"></div>
+
+  <script>
+    const { createStorefrontSDK } = RMZStorefront;
+
+    const sdk = createStorefrontSDK({
+      apiUrl: 'https://front.rmz.gg/api',
+      publicKey: 'pk_your_public_key_here'
+    });
+
+    async function loadProducts() {
+      const featured = await sdk.products.getFeatured(8);
+      const container = document.getElementById('products');
+
+      featured.forEach(product => {
+        const div = document.createElement('div');
+        div.innerHTML = `<h3>${product.name}</h3><p>${product.price}</p>`;
+        container.appendChild(div);
+      });
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>
+```
+
+When loaded via a script tag, the SDK is available as `window.RMZStorefront`. The `createStorefrontSDK` factory function is the main entry point.
+
+## ES Module Import
+
+If you are using ES modules without a bundler:
+
+```html
+<script type="module">
+  import { createStorefrontSDK } from 'https://unpkg.com/rmz-storefront-sdk@latest/dist/index.mjs';
+
+  const sdk = createStorefrontSDK({
+    apiUrl: 'https://front.rmz.gg/api',
+    publicKey: 'pk_your_public_key_here',
+  });
+
+  const store = await sdk.store.get();
+  document.title = store.name;
+</script>
+```
+
+## Complete Example: Product Page
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Store</title>
+  <script src="https://unpkg.com/rmz-storefront-sdk@latest/dist/index.umd.js"></script>
+  <style>
+    .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .product-card { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; }
+    .add-btn { background: #4F46E5; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
+    #cart-count { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="store-name">Loading...</h1>
+    <span>Cart: <span id="cart-count">0</span> items</span>
+  </header>
+
+  <div id="products" class="product-grid"></div>
+
+  <script>
+    const { createStorefrontSDK } = RMZStorefront;
+
+    const sdk = createStorefrontSDK({
+      apiUrl: 'https://front.rmz.gg/api',
+      publicKey: 'pk_your_public_key_here',
+    });
+
+    // Restore cart token from localStorage
+    const savedCart = localStorage.getItem('rmz_cart_token');
+    if (savedCart) sdk.setCartToken(savedCart);
+
+    async function init() {
+      // Load store info and products in parallel
+      const [store, featured] = await Promise.all([
+        sdk.store.get(),
+        sdk.products.getFeatured(6),
+      ]);
+
+      document.getElementById('store-name').textContent = store.name;
+
+      const container = document.getElementById('products');
+      featured.forEach(product => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.innerHTML = `
+          <h3>${product.name}</h3>
+          <p>${product.price} ${store.currency}</p>
+          <button class="add-btn" onclick="addToCart(${product.id})">Add to Cart</button>
+        `;
+        container.appendChild(card);
+      });
+
+      // Update cart count
+      const count = await sdk.cart.getCount();
+      document.getElementById('cart-count').textContent = count;
+    }
+
+    async function addToCart(productId) {
+      try {
+        const cart = await sdk.cart.addItem(productId, 1);
+        document.getElementById('cart-count').textContent = cart.count;
+
+        // Persist cart token
+        const token = sdk.getCartToken();
+        if (token) localStorage.setItem('rmz_cart_token', token);
+      } catch (err) {
+        alert('Failed to add item: ' + err.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
+```
+
+## Node.js (CommonJS)
+
+For server-side scripts without ESM:
+
+```javascript
+const { createStorefrontSDK } = require('rmz-storefront-sdk');
+
+const sdk = createStorefrontSDK({
+  publicKey: process.env.RMZ_PUBLIC_KEY,
+  secretKey: process.env.RMZ_SECRET_KEY,
+  apiUrl: 'https://front.rmz.gg/api',
+  environment: 'production',
+});
+
+async function main() {
+  const store = await sdk.store.get();
+  const { data: products } = await sdk.products.getAll({ per_page: 100 });
+  console.log(`${store.name}: ${products.length} products`);
+}
+
+main();
+```

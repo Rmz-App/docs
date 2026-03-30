@@ -1,0 +1,390 @@
+---
+title: "Wishlist"
+description: "Manage a customer's product wishlist."
+---
+
+All wishlist endpoints require customer authentication.
+
+---
+
+## GET /wishlist
+
+Get the authenticated customer's wishlist.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/wishlist" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/wishlist", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/wishlist", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->get("https://front.rmz.gg/api/wishlist");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+Each item in the `items` array uses the full `ProductResource` format (see [List Products](/storefront-api/products/list-products) for the complete schema). Abbreviated example:
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 101,
+        "name": "Premium Game Key",
+        "slug": "premium-game-key",
+        "type": "code",
+        "price": {
+          "original": 199.99,
+          "actual": 199.99,
+          "formatted": "199.99 ر.س",
+          "currency": "SAR"
+        },
+        "stock": {
+          "is_in_stock": true
+        },
+        "image": { "url": "https://..." },
+        "categories": [
+          { "id": 1, "name": "Games", "slug": "games" }
+        ]
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+---
+
+## POST /wishlist
+
+Add a product to the wishlist.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+| Content-Type | application/json | Yes |
+
+### Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| product_id | integer | Yes | Product ID (must belong to the current store) |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://front.rmz.gg/api/wishlist" \
+  -H "Authorization: Bearer 1|abc123xyz..." \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 101}'
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/wishlist", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer 1|abc123xyz...",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ product_id: 101 })
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.post("https://front.rmz.gg/api/wishlist",
+    headers={"Authorization": "Bearer 1|abc123xyz..."},
+    json={"product_id": 101}
+)
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->post("https://front.rmz.gg/api/wishlist", [
+    "product_id" => 101
+]);
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Product added to wishlist successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Product already in wishlist |
+| 401 | Not authenticated |
+| 422 | Validation error (invalid product_id) |
+
+---
+
+## DELETE /wishlist/{productId}
+
+Remove a product from the wishlist.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| productId | integer | Product ID to remove |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://front.rmz.gg/api/wishlist/101" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/wishlist/101", {
+  method: "DELETE",
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.delete("https://front.rmz.gg/api/wishlist/101", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->delete("https://front.rmz.gg/api/wishlist/101");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Product removed from wishlist successfully"
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 401 | Not authenticated |
+| 404 | Product not found in wishlist |
+
+---
+
+## GET /wishlist/check/{productId}
+
+Check if a specific product is in the customer's wishlist.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| productId | integer | Product ID to check |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/wishlist/check/101" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/wishlist/check/101", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/wishlist/check/101", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->get("https://front.rmz.gg/api/wishlist/check/101");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "in_wishlist": true
+  }
+}
+```
+
+---
+
+## GET /wishlist/count
+
+Get the total number of items in the customer's wishlist.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/wishlist/count" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/wishlist/count", {
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/wishlist/count", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->get("https://front.rmz.gg/api/wishlist/count");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "count": 5
+  }
+}
+```
+
+---
+
+## DELETE /wishlist/clear
+
+Remove all items from the wishlist.
+
+### Authentication
+
+Requires Bearer token (`auth:customer_api`).
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://front.rmz.gg/api/wishlist/clear" \
+  -H "Authorization: Bearer 1|abc123xyz..."
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/wishlist/clear", {
+  method: "DELETE",
+  headers: { "Authorization": "Bearer 1|abc123xyz..." }
+});
+const data = await response.json();
+```
+
+```python Python
+response = requests.delete("https://front.rmz.gg/api/wishlist/clear", headers={
+    "Authorization": "Bearer 1|abc123xyz..."
+})
+data = response.json()
+```
+
+```php PHP
+$response = Http::withToken("1|abc123xyz...")->delete("https://front.rmz.gg/api/wishlist/clear");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Wishlist cleared successfully"
+}
+```

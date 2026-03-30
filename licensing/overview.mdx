@@ -1,0 +1,126 @@
+---
+title: "Licensing Overview"
+description: "Protect your software with license key verification. Customers purchase a key from your store and your software validates it with a single API call."
+---
+
+RMZ Software Licensing lets you sell license keys for your software products. Your customers purchase a key from your store, and your software verifies it against the RMZ API on startup or periodically.
+
+## How It Works
+
+<Steps>
+  <Step title="Create a license product">
+    In your store dashboard, create a product with type **Software License**.
+  </Step>
+  <Step title="Configure lock type and activations">
+    Choose a lock type (`none`, `hwid`, or `ip`), set max activations, and add pricing plans.
+  </Step>
+  <Step title="Customer purchases a key">
+    When a customer completes an order, they receive a license key automatically (e.g. `MYAPP-XXXX-XXXX-XXXX-XXXX`).
+  </Step>
+  <Step title="Your software calls the verify endpoint">
+    Your application sends a `POST` request to `https://license.rmz.gg/verify` with the product ID, license key, and optionally a hardware ID.
+  </Step>
+  <Step title="API responds with license status">
+    The API returns whether the license is valid, along with full details including plan info, expiry, and activation counts.
+  </Step>
+</Steps>
+
+## Quick Start
+
+### 1. Create a License Product
+
+In your store dashboard, go to **Products** and create a new product:
+
+| Setting | Description |
+|---------|-------------|
+| **Type** | Software License |
+| **Key prefix** | A short prefix for your keys (e.g. `MYAPP` produces `MYAPP-XXXX-XXXX-XXXX-XXXX`) |
+| **Lock type** | `none` (key-only), `hwid` (hardware ID), or `ip` (IP address) |
+| **Max activations** | How many devices can use one key (`0` = unlimited) |
+| **Plans** | Duration-based pricing tiers (monthly, yearly, lifetime, etc.) |
+| **E2EE** | Optionally encrypt all API responses with AES-256-GCM |
+
+### 2. Verify in Your Software
+
+```bash
+curl -X POST https://license.rmz.gg/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 123,
+    "license_key": "MYAPP-XXXX-XXXX-XXXX-XXXX",
+    "hwid": "machine-hardware-id"
+  }'
+```
+
+### 3. Handle the Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "status": "active",
+    "lock_type": "hwid",
+    "product": {
+      "id": 123,
+      "name": "My Script Pro"
+    },
+    "plan": {
+      "duration": "annually",
+      "duration_label": "سنه",
+      "start_date": "23-03-2026",
+      "end_date": "23-03-2027",
+      "is_active": true
+    },
+    "expires_at": "2027-03-23T12:00:00.000000Z",
+    "expires_in_days": 365,
+    "activations": {
+      "current": 1,
+      "max": 3,
+      "remaining": 2
+    },
+    "metadata": null
+  }
+}
+```
+
+## Code Examples
+
+Full working examples are available for every supported language:
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="js" href="/licensing/examples/javascript">
+    Built-in fetch, no dependencies
+  </Card>
+  <Card title="Python" icon="python" href="/licensing/examples/python">
+    Uses the requests library
+  </Card>
+  <Card title="PHP" icon="php" href="/licensing/examples/php">
+    Built-in cURL, no dependencies
+  </Card>
+  <Card title="Lua / FiveM" icon="code" href="/licensing/examples/lua-fivem">
+    FiveM-native HTTP requests
+  </Card>
+</CardGroup>
+
+All examples are also available on GitHub: [github.com/Rmz-App/rmz-license-examples](https://github.com/Rmz-App/rmz-license-examples)
+
+## Managing Licenses
+
+From your store dashboard under **Licenses**:
+
+- View all issued licenses with filters and search
+- Create manual licenses (for testing, gifts, etc.)
+- Revoke, suspend, or reactivate individual licenses
+- Reset device activations
+- View activation history and verification logs
+- Aggregate stats (active, expired, suspended, revoked)
+
+## License Lifecycle
+
+| Event | Effect |
+|-------|--------|
+| Customer purchases | Key auto-generated with the configured prefix |
+| Order completed | License activated, expiry set from plan duration |
+| Order cancelled | All order licenses revoked |
+| Order refunded | All order licenses revoked |
+| Expiry date passes | Marked expired automatically (hourly check) |

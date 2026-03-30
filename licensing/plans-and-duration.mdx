@@ -1,0 +1,74 @@
+---
+title: "Plans & Duration"
+description: "Duration-based pricing plans for license products, from monthly to decennial, plus lifetime licenses."
+---
+
+License products support subscription-style plans with different durations and prices. When a customer purchases a plan, the license key is issued with an expiry date based on the selected duration.
+
+## Duration Keys
+
+| Duration Key | Display Label | Days |
+|-------------|---------------|------|
+| `monthly` | شهر | 30 |
+| `quarterly` | ٣ اشهر | 90 |
+| `semiAnnual` | ٦ أشهر | 180 |
+| `annually` | سنه | 365 |
+| `biennial` | سنتين | 730 |
+| `quinquennial` | ٥ سنوات | 1,825 |
+| `decennial` | ١٠ سنوات | 3,650 |
+
+You can set a different price for each duration when creating or editing your product. Customers choose their preferred plan at checkout.
+
+## Plan Data in Responses
+
+When a license has a plan, the API response includes full plan details:
+
+```json
+{
+  "plan": {
+    "duration": "annually",
+    "duration_label": "سنه",
+    "start_date": "23-03-2026",
+    "end_date": "23-03-2027",
+    "is_active": true
+  },
+  "expires_at": "2027-03-23T12:00:00.000000Z",
+  "expires_in_days": 365
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `plan.duration` | The raw duration key (e.g. `annually`) |
+| `plan.duration_label` | Arabic display label (e.g. `سنه`) |
+| `plan.start_date` | When the plan started (DD-MM-YYYY) |
+| `plan.end_date` | When the plan ends (DD-MM-YYYY) |
+| `plan.is_active` | Whether the plan period is currently active |
+| `expires_at` | ISO 8601 expiry timestamp |
+| `expires_in_days` | Days remaining until expiry |
+
+## Lifetime Licenses
+
+For products sold as one-time purchases without an expiry, the response shows:
+
+```json
+{
+  "plan": null,
+  "expires_at": null,
+  "expires_in_days": null
+}
+```
+
+<Tip>
+  Check for `expires_at == null` in your code to determine if a license is lifetime. A lifetime license never expires and will always return `"status": "active"` (unless manually revoked or suspended).
+</Tip>
+
+## Expiry Behavior
+
+- An hourly background job checks all licenses and marks expired ones automatically.
+- Once expired, the API returns `LICENSE_EXPIRED` (HTTP 403) for that key.
+- The `expires_in_days` field lets you show a countdown or warning to your users before their license expires.
+
+<Note>
+  Licenses are tied to the order. If an order is cancelled or refunded, all associated license keys are revoked regardless of their remaining duration.
+</Note>

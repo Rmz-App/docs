@@ -1,0 +1,497 @@
+---
+title: "Authentication"
+description: "OTP-based customer authentication flow for embed checkout."
+---
+
+The Embed API uses an OTP (one-time password) flow to authenticate customers. This enables verified checkout without requiring the customer to have an existing account.
+
+## Authentication Flow
+
+<Steps>
+
+<Step title="Start session">
+  Send the customer's phone number to receive an OTP code via WhatsApp (with SMS fallback).
+</Step>
+
+<Step title="Verify OTP">
+  Submit the 4-digit code. If the customer exists, they are authenticated immediately. If new, they proceed to registration.
+</Step>
+
+<Step title="Complete registration (new customers only)">
+  Provide name and email to create the customer account.
+</Step>
+
+<Step title="Use token">
+  The returned Sanctum token is used for authenticated checkout endpoints.
+</Step>
+
+</Steps>
+
+---
+
+## Start Authentication
+
+Sends an OTP code to the customer's phone number via WhatsApp, falling back to SMS if WhatsApp delivery fails.
+
+```
+POST /api/embed/auth/start
+```
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-Embed-Key` | Yes | Your store's embed public key |
+| `Content-Type` | Yes | `application/json` |
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `product_id` | integer | Yes | Product ID (must exist and be active) |
+| `country_code` | string | Yes | Phone country code (e.g., `966`, `+966`, `00966`) |
+| `phone` | string | Yes | Phone number without country code |
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://embed.rmz.gg/api/embed/auth/start" \
+  -H "X-Embed-Key: your_embed_public_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 42,
+    "country_code": "966",
+    "phone": "501234567"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://embed.rmz.gg/api/embed/auth/start", {
+  method: "POST",
+  headers: {
+    "X-Embed-Key": "your_embed_public_key",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    product_id: 42,
+    country_code: "966",
+    phone: "501234567"
+  })
+});
+
+const { data } = await response.json();
+// Store session_token for subsequent requests
+console.log("Session:", data.session_token);
+console.log("Resend available in:", data.resend_cooldown, "seconds");
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://embed.rmz.gg/api/embed/auth/start",
+    headers={
+        "X-Embed-Key": "your_embed_public_key",
+        "Content-Type": "application/json"
+    },
+    json={
+        "product_id": 42,
+        "country_code": "966",
+        "phone": "501234567"
+    }
+)
+
+data = response.json()["data"]
+session_token = data["session_token"]
+```
+
+```php PHP
+$response = Http::withHeaders([
+    'X-Embed-Key' => 'your_embed_public_key',
+])->post('https://embed.rmz.gg/api/embed/auth/start', [
+    'product_id' => 42,
+    'country_code' => '966',
+    'phone' => '501234567',
+]);
+
+$data = $response->json()['data'];
+$sessionToken = $data['session_token'];
+```
+
+</CodeGroup>
+
+### Success Response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "session_token": "abc123def456...",
+    "expires_in": 300,
+    "resend_cooldown": 30,
+    "masked_phone": "+966 *****4567"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_token` | string | Session identifier for subsequent auth requests |
+| `expires_in` | integer | Session expiry in seconds (default: 300 = 5 minutes) |
+| `resend_cooldown` | integer | Seconds to wait before requesting a resend (default: 30) |
+| `masked_phone` | string | Partially masked phone number for display |
+
+### Error Responses
+
+| Status | Error Code | Description |
+|--------|------------|-------------|
+| 403 | `PHONE_BLOCKED` | Phone number is blacklisted |
+| 429 | `RATE_LIMIT_EXCEEDED` | Too many OTP requests (includes `retry_after` in seconds) |
+| 422 | - | Validation error |
+| 404 | - | Product not found |
+
+---
+
+## Resend OTP
+
+Resend the verification code via SMS. The original code is replaced with a new one.
+
+```
+POST /api/embed/auth/resend
+```
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session_token` | string | Yes | The session token from the start response |
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://embed.rmz.gg/api/embed/auth/resend" \
+  -H "X-Embed-Key: your_embed_public_key" \
+  -H "Content-Type: application/json" \
+  -d '{"session_token": "abc123def456..."}'
+```
+
+```javascript JavaScript
+const response = await fetch("https://embed.rmz.gg/api/embed/auth/resend", {
+  method: "POST",
+  headers: {
+    "X-Embed-Key": "your_embed_public_key",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ session_token: sessionToken })
+});
+```
+
+</CodeGroup>
+
+### Success Response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Verification code sent via SMS",
+    "resend_cooldown": 30
+  }
+}
+```
+
+### Error Responses
+
+| Status | Error Code | Description |
+|--------|------------|-------------|
+| 404 | - | Session not found |
+| 400 | `SESSION_EXPIRED` | Session has expired, start again |
+| 400 | - | Session already verified |
+| 429 | `COOLDOWN_ACTIVE` | Cooldown period active (includes `retry_after`) |
+| 429 | `RATE_LIMIT_EXCEEDED` | Too many resend attempts |
+
+<Warning>
+  Resends always go via SMS, not WhatsApp. The verification code is regenerated on each resend, so only the latest code is valid.
+</Warning>
+
+---
+
+## Verify OTP
+
+Submit the 4-digit OTP code to verify the customer's phone number.
+
+```
+POST /api/embed/auth/verify
+```
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session_token` | string | Yes | The session token from the start response |
+| `code` | string | Yes | The 4-digit verification code |
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://embed.rmz.gg/api/embed/auth/verify" \
+  -H "X-Embed-Key: your_embed_public_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "abc123def456...",
+    "code": "1234"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://embed.rmz.gg/api/embed/auth/verify", {
+  method: "POST",
+  headers: {
+    "X-Embed-Key": "your_embed_public_key",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    session_token: sessionToken,
+    code: "1234"
+  })
+});
+
+const result = await response.json();
+
+if (result.data.status === "authenticated") {
+  // Existing customer - save token and proceed to checkout
+  const token = result.data.token;
+} else if (result.data.status === "needs_registration") {
+  // New customer - show registration form
+}
+```
+
+</CodeGroup>
+
+### Success Response - Existing Customer (200)
+
+If the customer already exists in this store (or in another store on the platform), they are authenticated immediately:
+
+```json
+{
+  "success": true,
+  "data": {
+    "status": "authenticated",
+    "customer": {
+      "id": 1234,
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567",
+      "country_code": "966"
+    },
+    "token": "1|abc123xyz..."
+  }
+}
+```
+
+### Success Response - New Customer (200)
+
+If no customer record exists for this phone number, the response indicates registration is needed:
+
+```json
+{
+  "success": true,
+  "data": {
+    "status": "needs_registration",
+    "session_token": "abc123def456..."
+  }
+}
+```
+
+### Error Responses
+
+| Status | Error Code | Description |
+|--------|------------|-------------|
+| 404 | - | Session not found |
+| 400 | `SESSION_EXPIRED` | Session has expired |
+| 400 | - | Session already verified |
+| 400 | `INVALID_CODE` | Wrong code (includes `remaining_attempts` and optional `cooldown_seconds`) |
+| 400 | `MAX_ATTEMPTS_REACHED` | Too many failed attempts, request a new code |
+| 429 | `COOLDOWN_ACTIVE` | Must wait before retrying (includes `retry_after`) |
+
+**Invalid code response example:**
+
+```json
+{
+  "success": false,
+  "message": "Invalid verification code",
+  "error_code": "INVALID_CODE",
+  "remaining_attempts": 2,
+  "cooldown_seconds": null
+}
+```
+
+<Note>
+  Customers get 3 attempts per OTP code. After exhausting all attempts, they must request a new code via the resend endpoint.
+</Note>
+
+---
+
+## Complete Registration
+
+Register a new customer after successful OTP verification. Only callable when the verify response returned `status: "needs_registration"`.
+
+```
+POST /api/embed/auth/complete
+```
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `session_token` | string | Yes | The verified session token |
+| `firstName` | string | Yes | Customer first name (max 100 characters) |
+| `lastName` | string | Yes | Customer last name (max 100 characters) |
+| `email` | string | Yes | Customer email address |
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://embed.rmz.gg/api/embed/auth/complete" \
+  -H "X-Embed-Key: your_embed_public_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_token": "abc123def456...",
+    "firstName": "Ahmed",
+    "lastName": "Ali",
+    "email": "ahmed@example.com"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://embed.rmz.gg/api/embed/auth/complete", {
+  method: "POST",
+  headers: {
+    "X-Embed-Key": "your_embed_public_key",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    session_token: sessionToken,
+    firstName: "Ahmed",
+    lastName: "Ali",
+    email: "ahmed@example.com"
+  })
+});
+
+const { data } = await response.json();
+const token = data.token; // Save for checkout
+```
+
+</CodeGroup>
+
+### Success Response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "customer": {
+      "id": 5678,
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567",
+      "country_code": "966"
+    },
+    "token": "1|xyz789abc..."
+  }
+}
+```
+
+### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 400 | Invalid or expired session |
+| 400 | Registration not allowed for this session (already used) |
+| 422 | Validation error (missing fields, invalid email) |
+
+---
+
+## Validate Token
+
+Check if a previously saved token is still valid for a specific product. Use this to restore a customer's session without re-authenticating.
+
+```
+POST /api/embed/auth/validate
+```
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `Authorization` | Yes | `Bearer <token>` |
+| `X-Embed-Key` | Yes | Your store's embed public key |
+
+### Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `product_id` | integer | Yes | The product ID to validate the token against |
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://embed.rmz.gg/api/embed/auth/validate" \
+  -H "Authorization: Bearer 1|abc123xyz..." \
+  -H "X-Embed-Key: your_embed_public_key" \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 42}'
+```
+
+```javascript JavaScript
+const response = await fetch("https://embed.rmz.gg/api/embed/auth/validate", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${savedToken}`,
+    "X-Embed-Key": "your_embed_public_key",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ product_id: 42 })
+});
+
+const { data } = await response.json();
+if (data.valid) {
+  // Token is valid, skip auth flow
+  console.log("Welcome back,", data.customer.firstName);
+}
+```
+
+</CodeGroup>
+
+### Success Response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "valid": true,
+    "customer": {
+      "id": 1234,
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com",
+      "phone": "501234567",
+      "country_code": "966"
+    }
+  }
+}
+```
+
+### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 401 | Invalid or expired token |
+| 403 | Token not valid for this product (customer belongs to a different store) |
+| 422 | Invalid product ID |
+
+<Tip>
+  Store the authentication token in `localStorage` and call this endpoint when the embed widget loads. If the token is valid, skip the OTP flow entirely and go straight to checkout.
+</Tip>

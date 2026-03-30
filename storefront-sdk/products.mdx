@@ -1,0 +1,242 @@
+---
+title: "Products"
+description: "Browse, search, and query products using sdk.products — including Firebase/Supabase-style method chaining."
+---
+
+The `sdk.products` namespace provides both direct methods and a chainable query builder for retrieving products. All product listing methods are public and do not require authentication.
+
+## Query Builder
+
+The SDK provides a Firebase/Supabase-style query builder for intuitive product filtering:
+
+```typescript
+// Chain where, orderBy, and limit
+const products = await sdk.products
+  .where('featured', '=', true)
+  .orderBy('created_at', 'desc')
+  .limit(8)
+  .get();
+
+// Filter by category and price
+const expensive = await sdk.products
+  .where('category', '=', 'electronics')
+  .orderBy('price', 'desc')
+  .limit(10)
+  .get();
+
+// Price range filtering
+const midRange = await sdk.products
+  .where('price', '>=', 50)
+  .get();
+```
+
+**Supported `where` fields and operators:**
+
+| Field | Operators | Example |
+|-------|-----------|---------|
+| `featured` | `=` | `.where('featured', '=', true)` |
+| `category` | `=` | `.where('category', '=', 'electronics')` |
+| `price` | `>=`, `<=` | `.where('price', '>=', 100)` |
+
+**Chainable methods:**
+
+| Method | Description |
+|--------|-------------|
+| `.where(field, operator, value)` | Add a filter condition |
+| `.orderBy(field, direction)` | Sort results (`'asc'` or `'desc'`) |
+| `.limit(count)` | Limit the number of results |
+| `.get()` | Execute the query and return `Product[]` |
+
+## Direct Methods
+
+### `products.getAll(params?)`
+
+Get a paginated list of products with optional filtering.
+
+```typescript
+const { data, pagination } = await sdk.products.getAll({
+  page: 1,
+  per_page: 12,
+  category: 'electronics',
+  sort: 'price_asc'
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `page` | `number` | Page number (default: 1) |
+| `per_page` | `number` | Items per page (default: 12) |
+| `search` | `string` | Search query |
+| `category` | `string` | Filter by category slug |
+| `sort` | `string` | Sort order (e.g., `price_asc`, `price_desc`, `created_at_desc`) |
+
+**Returns:** `{ data: Product[]; pagination?: Pagination }`
+
+---
+
+### `products.getBySlug(slug)`
+
+Get a single product by its URL slug.
+
+```typescript
+const product = await sdk.products.getBySlug('premium-software-license');
+```
+
+**Returns:** `Product`
+
+---
+
+### `products.getById(id)`
+
+Get a single product by its numeric ID.
+
+```typescript
+const product = await sdk.products.getById(42);
+```
+
+**Returns:** `Product`
+
+---
+
+### `products.search(query, options?)`
+
+Search products by keyword with optional filters.
+
+```typescript
+const { data, pagination } = await sdk.products.search('laptop', {
+  category: 'electronics',
+  price_min: 500,
+  price_max: 2000,
+  per_page: 20
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `query` | `string` | Search keyword |
+| `category` | `string` | Filter by category slug |
+| `price_min` | `number` | Minimum price filter |
+| `price_max` | `number` | Maximum price filter |
+| `per_page` | `number` | Results per page |
+
+**Returns:** `{ data: Product[]; pagination?: Pagination }`
+
+---
+
+### `products.getFeatured(limit?)`
+
+Get featured products.
+
+```typescript
+const featured = await sdk.products.getFeatured(8);
+```
+
+**Parameters:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `limit` | `number` | `8` | Maximum number of products to return |
+
+**Returns:** `Product[]`
+
+---
+
+### `products.getRelated(productId, limit?)`
+
+Get products related to a specific product.
+
+```typescript
+const related = await sdk.products.getRelated(42, 4);
+```
+
+**Returns:** `Product[]`
+
+---
+
+### `products.getReviews(productId, params?)`
+
+Get reviews for a specific product.
+
+```typescript
+const { data: reviews, pagination } = await sdk.products.getReviews(42, {
+  page: 1,
+  per_page: 10
+});
+```
+
+**Returns:** `{ data: Review[]; pagination?: Pagination }`
+
+## Categories
+
+The `sdk.categories` namespace provides methods for browsing categories and their products:
+
+```typescript
+// Get all categories
+const categories = await sdk.categories.getAll();
+
+// Get a category by slug
+const category = await sdk.categories.getBySlug('electronics');
+
+// Get a category by ID
+const category = await sdk.categories.getById(5);
+
+// Get products in a category with pagination
+const { data, pagination } = await sdk.categories.getProducts('electronics', {
+  page: 1,
+  per_page: 12,
+  sort: 'price_asc'
+});
+```
+
+## Types
+
+```typescript
+interface Product {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  price: number;
+  image?: {
+    url: string;
+    alt?: string;
+  };
+  category?: Category;
+  is_featured?: boolean;
+  stock?: number;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  image?: string;
+}
+
+interface Pagination {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  has_more_pages: boolean;
+}
+```
+
+## Example: Product Listing Page
+
+```typescript
+// Load category products with pagination
+async function loadCategoryPage(slug: string, page: number) {
+  const [category, { data: products, pagination }] = await Promise.all([
+    sdk.categories.getBySlug(slug),
+    sdk.categories.getProducts(slug, { page, per_page: 12 }),
+  ]);
+
+  return { category, products, pagination };
+}
+```

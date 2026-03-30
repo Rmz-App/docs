@@ -1,0 +1,443 @@
+---
+title: "Store Information"
+description: "Retrieve store details, settings, currencies, features, and banners."
+---
+
+These public endpoints return information about the store resolved from your request's origin domain. No authentication is required.
+
+---
+
+## GET /store
+
+Get store information including categories, pages, announcements, and payment methods.
+
+### Authentication
+
+None required.
+
+### Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| include | string | No | Comma-separated list of relations to include. Default: `categories,pages,announcements,payment_methods` |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/store"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/store");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/store")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/store");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "My Store",
+    "description": "Welcome to my store",
+    "short_description": null,
+    "logo": "https://cdn.rmz.gg/...",
+    "favicon": "https://cdn.rmz.gg/...",
+    "cover_url": null,
+    "domain": {
+      "domain": "mystore",
+      "is_active": true
+    },
+    "custom_domain": null,
+    "currency": "SAR",
+    "default_currency": "SAR",
+    "timezone": "Asia/Riyadh",
+    "language": "ar",
+    "status": 1,
+    "is_maintenance": false,
+    "maintenance_message": null,
+    "theme": {
+      "color": "#3B82F6",
+      "font_family": "Inter",
+      "enable_rtl": true,
+      "layout": "default"
+    },
+    "features": {
+      "reviews_enabled": true,
+      "wishlist_enabled": true,
+      "courses_enabled": false,
+      "subscriptions_enabled": true,
+      "coupons_enabled": true
+    },
+    "seo": {
+      "title": "My Store",
+      "description": "Welcome to my store",
+      "keywords": null
+    },
+    "contact_info": {
+      "email": "support@mystore.com",
+      "phone": null,
+      "address": null,
+      "working_hours": null
+    },
+    "social_links": {},
+    "payment_methods": [
+      {
+        "id": 1,
+        "method": "card",
+        "nickname": "Credit Card",
+        "is_enabled": true,
+        "is_auto_process": true
+      }
+    ],
+    "sbc_id": null,
+    "categories": [
+      {
+        "id": 1,
+        "name": "Electronics",
+        "slug": "electronics",
+        "description": null,
+        "image": null,
+        "icon": null,
+        "is_active": true,
+        "sort_order": 0,
+        "products_count": 24,
+        "created_at": "2024-01-01T00:00:00.000000Z",
+        "updated_at": "2024-06-15T10:30:00.000000Z"
+      }
+    ],
+    "pages": [
+      {
+        "id": 1,
+        "title": "About Us",
+        "url": "about-us",
+        "content": "<h1>About Our Store</h1><p>...</p>",
+        "excerpt": "Learn more about our store",
+        "meta_title": "About Us",
+        "meta_description": "Learn more about our store",
+        "is_active": true,
+        "created_at": "2024-01-01T00:00:00.000000Z",
+        "updated_at": "2024-06-15T10:30:00.000000Z"
+      }
+    ],
+    "announcements": [
+      {
+        "id": 1,
+        "icon": "megaphone",
+        "content": "Free shipping on orders over 100 SAR",
+        "color": "#3B82F6",
+        "text_color": "#FFFFFF",
+        "route": null,
+        "href": null,
+        "is_enabled": true
+      }
+    ],
+    "components": [
+      {
+        "id": 1,
+        "type": "featured_products",
+        "name": "Featured Products",
+        "sort_order": 0,
+        "settings": {}
+      }
+    ],
+    "features_list": [
+      {
+        "id": 1,
+        "title": "Instant Delivery",
+        "description": "Get your products instantly",
+        "icon": "zap",
+        "sort_order": 0
+      }
+    ],
+    "banners": [
+      {
+        "id": 1,
+        "title": "Summer Sale",
+        "description": "Up to 50% off",
+        "image_url": "https://cdn.rmz.gg/...",
+        "link_url": "/products",
+        "sort_order": 0
+      }
+    ],
+    "stats": {
+      "total_products": null,
+      "total_categories": null,
+      "total_reviews": null,
+      "average_rating": null
+    },
+    "created_at": "2024-01-01 00:00:00",
+    "updated_at": "2024-06-15 10:30:00"
+  }
+}
+```
+
+<Tip>
+Use the `include` parameter to request only the data you need. For example, `?include=categories` to load only categories.
+</Tip>
+
+<Note>
+The following fields are **conditional** and only appear in the response when their corresponding relations are loaded via the `include` parameter or when the data is available:
+- `payment_methods` - included when `payment_methods` is in the `include` list
+- `categories` - included when `categories` is in the `include` list (uses [CategoryResource](/storefront-api/categories))
+- `pages` - included when `pages` is in the `include` list (uses [PageResource](/storefront-api/pages))
+- `announcements` - included when `announcements` is in the `include` list
+- `components` - included when `components` relation is loaded
+- `features_list` - included when `features` relation is loaded
+- `banners` - included when `banners` relation is loaded
+- `stats.total_products`, `stats.total_categories`, `stats.total_reviews`, `stats.average_rating` - included when corresponding relations are loaded
+</Note>
+
+---
+
+## GET /store/currencies
+
+Get available currencies with exchange rates.
+
+### Authentication
+
+None required.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/store/currencies"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/store/currencies");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/store/currencies")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/store/currencies");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "code": "SAR",
+      "symbol": "ر.س",
+      "name": "Saudi Riyal",
+      "rate": 1.0,
+      "is_default": true
+    },
+    {
+      "id": 2,
+      "code": "USD",
+      "symbol": "$",
+      "name": "US Dollar",
+      "rate": 0.2667,
+      "is_default": false
+    }
+  ]
+}
+```
+
+---
+
+## GET /store/settings
+
+Get frontend-related store settings including theme, fonts, SEO configuration, and contact information.
+
+### Authentication
+
+None required.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/store/settings"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/store/settings");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/store/settings")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/store/settings");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "theme_color": "#3B82F6",
+    "font_family": "Inter",
+    "enable_rtl": false,
+    "enable_reviews": true,
+    "enable_wishlist": true,
+    "social_links": {
+      "twitter": "https://twitter.com/mystore",
+      "instagram": "https://instagram.com/mystore"
+    },
+    "contact_info": {
+      "email": "support@mystore.com",
+      "phone": "+966501234567",
+      "address": "Riyadh, Saudi Arabia"
+    },
+    "seo": {
+      "meta_title": "My Store - Best Digital Products",
+      "meta_description": "Shop the best digital products",
+      "meta_keywords": "digital, products, store"
+    }
+  }
+}
+```
+
+---
+
+## GET /store/features
+
+Get store feature highlights (marketing features displayed on the storefront).
+
+### Authentication
+
+None required.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/store/features"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/store/features");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/store/features")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/store/features");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "title": "Instant Delivery",
+      "description": "Get your digital products instantly after purchase"
+    },
+    {
+      "id": 2,
+      "title": "Secure Payments",
+      "description": "All transactions are encrypted and secure"
+    }
+  ]
+}
+```
+
+---
+
+## GET /store/banners
+
+Get promotional banners configured for the store.
+
+### Authentication
+
+None required.
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl "https://front.rmz.gg/api/store/banners"
+```
+
+```javascript JavaScript
+const response = await fetch("https://front.rmz.gg/api/store/banners");
+const data = await response.json();
+```
+
+```python Python
+response = requests.get("https://front.rmz.gg/api/store/banners")
+data = response.json()
+```
+
+```php PHP
+$response = Http::get("https://front.rmz.gg/api/store/banners");
+$data = $response->json();
+```
+</CodeGroup>
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "type": "single"
+    },
+    {
+      "id": 2,
+      "type": "carousel"
+    }
+  ]
+}
+```
+
+#### Error Responses
+
+| Status | Description |
+|--------|-------------|
+| 404 | Store not found |

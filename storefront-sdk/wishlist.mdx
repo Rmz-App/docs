@@ -1,0 +1,92 @@
+---
+title: "Wishlist"
+description: "Manage the customer's wishlist — add, remove, check, and clear items using sdk.wishlist."
+---
+
+The `sdk.wishlist` namespace manages the authenticated customer's wishlist. All methods require a Bearer token (set via `sdk.setAuthToken()`).
+
+## Methods
+
+### `wishlist.get()`
+
+Retrieve the customer's full wishlist.
+
+```typescript
+const { items, count } = await sdk.wishlist.get();
+console.log(`${count} items in wishlist`);
+```
+
+**Returns:** `{ items: Product[]; count: number }`
+
+---
+
+### `wishlist.addItem(productId)`
+
+Add a product to the wishlist.
+
+```typescript
+await sdk.wishlist.addItem(42);
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `productId` | `number` | Product ID to add |
+
+**Returns:** `void`
+
+---
+
+### `wishlist.removeItem(productId)`
+
+Remove a product from the wishlist.
+
+```typescript
+await sdk.wishlist.removeItem(42);
+```
+
+**Returns:** `void`
+
+---
+
+### `wishlist.check(productId)`
+
+Check whether a specific product is in the customer's wishlist.
+
+```typescript
+const { in_wishlist } = await sdk.wishlist.check(42);
+if (in_wishlist) {
+  console.log('Product is wishlisted');
+}
+```
+
+**Returns:** `{ in_wishlist: boolean }`
+
+---
+
+### `wishlist.clear()`
+
+Remove all items from the wishlist.
+
+```typescript
+await sdk.wishlist.clear();
+```
+
+**Returns:** `void`
+
+## Example: Wishlist Toggle Button
+
+```typescript
+async function toggleWishlist(productId: number) {
+  const { in_wishlist } = await sdk.wishlist.check(productId);
+
+  if (in_wishlist) {
+    await sdk.wishlist.removeItem(productId);
+    return false; // removed
+  } else {
+    await sdk.wishlist.addItem(productId);
+    return true; // added
+  }
+}
+```

@@ -1,0 +1,186 @@
+---
+title: "Embed API Overview"
+description: "Embed a checkout widget for any RMZ product on external websites using the Embed API."
+---
+
+RMZ provides two ways to embed checkout on external websites:
+
+1. **Widget script** (recommended) — a single script tag + button with data attributes. The widget handles the entire UI and purchase flow automatically.
+2. **Direct API** — HTTP endpoints for building a fully custom checkout experience.
+
+<Tip>
+  Most integrations should use the **widget script**. See the [Embedding Checkout guide](/guides/embedding-checkout) for a complete walkthrough.
+</Tip>
+
+## Widget Script (Recommended)
+
+Add the script and a button to any HTML page:
+
+```html
+<!-- RMZ Embed Code -->
+<script src="https://embed-js.rmz.gg/rmz-embed.js"></script>
+<button data-rmz-product="61200"
+    data-rmz-key="rmz_pk_1_DIO7CqCNSyYtZSTVqqjU9VkT"
+    data-rmz-theme="auto">Buy Product</button>
+```
+
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-rmz-product` | Yes | Product ID from your dashboard |
+| `data-rmz-key` | Yes | Embed public key (starts with `rmz_pk_`) |
+| `data-rmz-theme` | No | `auto`, `light`, or `dark` (default: `auto`) |
+
+Configure your embed key and allowed domains in **Dashboard > Settings > Embed**.
+
+---
+
+## Direct API
+
+If you need full control over the UI, use the API endpoints below.
+
+### Base URL
+
+```
+https://embed.rmz.gg/api/embed
+```
+
+### Use Cases
+
+- Build a fully custom checkout UI
+- Integrate embed purchasing into a native mobile app
+- Create a headless embed flow with your own design
+
+## Authentication
+
+The Embed API uses two authentication mechanisms depending on the endpoint:
+
+### 1. Embed Key (Public Endpoints)
+
+All requests must include your store's embed public key. Pass it as a header or query parameter:
+
+```
+X-Embed-Key: your_embed_public_key
+```
+
+You can find your embed key in **Dashboard > Settings > Embed**.
+
+<Warning>
+  The embed key is public and safe to expose in client-side code. It only grants access to embed-scoped endpoints and is validated against your store's allowed origins.
+</Warning>
+
+### 2. Sanctum Token (Authenticated Endpoints)
+
+After a customer completes the OTP authentication flow, they receive a Sanctum Bearer token with limited abilities (`embed:checkout`, `embed:validate`). This token is used for authenticated checkout and token validation endpoints.
+
+```
+Authorization: Bearer 1|abc123xyz...
+X-Embed-Key: your_embed_public_key
+```
+
+<Note>
+  Embed tokens are scoped to embed-only abilities. They cannot be used to access Storefront API or other platform endpoints.
+</Note>
+
+## Origin Validation
+
+When you configure allowed origins in your embed settings, the API validates the `Origin` or `Referer` header of every request against that list. Requests from unauthorized domains are rejected with a `403` status.
+
+If no allowed origins are configured, requests from any origin are accepted.
+
+## Rate Limits
+
+The Embed API enforces multi-layer rate limiting to prevent abuse:
+
+| Scope | Limit | Window |
+|-------|-------|--------|
+| Per IP | 30 requests | 1 minute |
+| Per IP | 200 requests | 1 hour |
+| Per IP | 500 requests | 1 day |
+| Global | 5,000 requests | 1 minute |
+
+Rate limit information is included in response headers:
+
+```
+X-RateLimit-Limit: 30
+X-RateLimit-Remaining: 27
+Retry-After: 60
+```
+
+When a rate limit is exceeded, the API returns `429 Too Many Requests`:
+
+```json
+{
+  "success": false,
+  "message": "Too many requests. Please try again later.",
+  "error_code": "RATE_LIMIT_EXCEEDED",
+  "retry_after": 60
+}
+```
+
+### Additional Auth Rate Limits
+
+The OTP authentication endpoints have separate, stricter rate limits:
+
+| Scope | Limit | Window |
+|-------|-------|--------|
+| OTP start per IP | 50 requests | 1 day |
+| OTP start per phone | 10 requests | 1 day |
+| OTP resend per IP | 20 requests | 1 day |
+| OTP resend per phone | 3 requests | 10 minutes |
+
+## CORS
+
+Embed endpoints return permissive CORS headers since they are designed to be called from external websites via iframes or JavaScript:
+
+```
+Access-Control-Allow-Origin: <requesting origin>
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization, X-Embed-Key, X-Requested-With, Accept, Origin
+Access-Control-Allow-Credentials: false
+Access-Control-Max-Age: 86400
+Access-Control-Expose-Headers: X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After
+Vary: Origin
+```
+
+Preflight `OPTIONS` requests return `204 No Content` with the appropriate headers.
+
+## Response Format
+
+All Embed API endpoints return JSON with a consistent structure:
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+Error responses include an error code and message:
+
+```json
+{
+  "success": false,
+  "message": "Human-readable error message",
+  "error_code": "MACHINE_READABLE_CODE"
+}
+```
+
+## Endpoints at a Glance
+
+<CardGroup cols={2}>
+  <Card title="Product Info" href="/embed-api/product-info">
+    Fetch product details for the embed widget.
+  </Card>
+  <Card title="Coupons" href="/embed-api/coupons">
+    Apply coupon codes and calculate discounts.
+  </Card>
+  <Card title="Authentication" href="/embed-api/authentication">
+    OTP-based customer authentication flow.
+  </Card>
+  <Card title="Checkout" href="/embed-api/checkout">
+    Create checkout sessions and initiate payments.
+  </Card>
+  <Card title="Payment Status" href="/embed-api/payment-status">
+    Check whether a payment has completed.
+  </Card>
+</CardGroup>

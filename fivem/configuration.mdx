@@ -1,0 +1,68 @@
+---
+title: "Configuration"
+description: "All config.lua settings for the RMZ FiveM resource, including polling behavior and debug mode."
+---
+
+All configuration is in the `config.lua` file in the resource root directory.
+
+## Settings Reference
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `Config.SecretKey` | string | `''` (required) | Secret key from your RMZ dashboard. Get it from **Benefits** > **FiveM Servers**. |
+| `Config.ApiUrl` | string | `https://fivem.rmz.gg/api/fivem` | RMZ API URL. Do not change unless instructed by RMZ support. |
+| `Config.PollInterval` | number | `10` | Seconds between each poll for new commands. Minimum: 5. Recommended: 10-15. |
+| `Config.Debug` | boolean | `false` | Enable verbose debug messages in the server console. Useful for troubleshooting. |
+| `Config.NotifyPlayer` | boolean | `true` | Send an in-game notification to the player when a command is executed for them. |
+
+## Full config.lua
+
+```lua
+Config = {}
+
+-- RMZ API Configuration
+-- Get your secret key from: RMZ Dashboard > Benefits > FiveM Servers
+Config.SecretKey = 'rmz_fivem_YOUR_SECRET_KEY_HERE'
+
+-- RMZ API URL (do not change unless instructed)
+Config.ApiUrl = 'https://fivem.rmz.gg/api/fivem'
+
+-- Poll interval in seconds (how often to check for new commands)
+-- Minimum: 5, Recommended: 10-15
+Config.PollInterval = 10
+
+-- Enable debug prints in server console
+Config.Debug = false
+
+-- Enable player notifications when commands are executed
+Config.NotifyPlayer = true
+```
+
+## Polling Behavior
+
+- The resource polls the RMZ API every `Config.PollInterval` seconds for pending commands
+- Commands are executed immediately via the server console
+- After execution, RMZ is notified of the result (success or failure)
+- If the confirmation callback fails, commands will be retried on the next poll cycle
+
+<Note>
+  Setting `PollInterval` too low (below 5 seconds) may trigger rate limiting (30 requests per minute). A value of 10-15 seconds works well for most servers.
+</Note>
+
+## Online-Required Commands
+
+If you enable **"Execute only when player is online"** in the benefit settings on the RMZ dashboard:
+
+- Commands are **not** executed during regular polling cycles
+- When the target player joins the server, their pending commands are fetched and executed immediately
+- This is useful for commands that require the player to be present (e.g. giving items directly to their inventory)
+
+## Security
+
+- The secret key is sent only in the `X-Fivem-Secret` HTTP header -- never exposed in URLs or logs
+- You can restrict API access to a specific server IP address from the RMZ dashboard
+- You can regenerate the secret key at any time if it is compromised
+
+<Warning>
+  Never share your secret key. Do not commit your modified `config.lua` to a public repository. Add `config.lua` to your `.gitignore`.
+</Warning>

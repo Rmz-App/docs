@@ -1,0 +1,226 @@
+---
+title: "Management, Pages & Components"
+description: "Server-side management operations, static pages, and homepage components using sdk.management, sdk.pages, and sdk.components."
+---
+
+This page covers three SDK namespaces: the server-side Management API, the Pages API, and the Components API.
+
+## Management API (Server-side Only)
+
+The `sdk.management` namespace provides server-side operations for analytics, inventory management, order management, and data export. These methods require a `secretKey` in the SDK configuration.
+
+<Warning>
+Management methods must only be called from a server-side environment (Node.js, SSR, API routes). They will fail without a `secretKey`.
+</Warning>
+
+```typescript
+const sdk = createStorefrontSDK({
+  publicKey: process.env.RMZ_PUBLIC_KEY!,
+  secretKey: process.env.RMZ_SECRET_KEY!, // required for management
+  apiUrl: 'https://front.rmz.gg/api',
+});
+```
+
+### `management.getAnalytics(params?)`
+
+Retrieve store analytics data.
+
+```typescript
+const analytics = await sdk.management.getAnalytics({
+  start_date: '2024-01-01',
+  end_date: '2024-12-31',
+  metrics: ['sales', 'customers', 'revenue']
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `start_date` | `string` | Start date (YYYY-MM-DD) |
+| `end_date` | `string` | End date (YYYY-MM-DD) |
+| `metrics` | `string[]` | Metrics to include: `sales`, `customers`, `revenue` |
+
+---
+
+### `management.updateInventory(data)`
+
+Update product inventory.
+
+```typescript
+await sdk.management.updateInventory({
+  product_id: 123,
+  quantity: 50,
+  operation: 'set' // 'set', 'add', or 'subtract'
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `product_id` | `number` | Product ID |
+| `quantity` | `number` | Quantity value |
+| `operation` | `string` | One of `'set'`, `'add'`, `'subtract'` |
+
+**Returns:** `{ success: boolean }`
+
+---
+
+### `management.getOrders(params?)`
+
+Get orders with server-side filters (more powerful than customer-facing order listing).
+
+```typescript
+const { data: orders, pagination } = await sdk.management.getOrders({
+  page: 1,
+  per_page: 50,
+  status: 'completed',
+  date_from: '2024-01-01',
+  date_to: '2024-12-31'
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `page` | `number` | Page number |
+| `per_page` | `number` | Orders per page |
+| `status` | `string` | Filter by status |
+| `date_from` | `string` | Start date filter |
+| `date_to` | `string` | End date filter |
+
+**Returns:** `{ data: Order[]; pagination?: Pagination }`
+
+---
+
+### `management.exportCustomers(params?)`
+
+Export customer data.
+
+```typescript
+const data = await sdk.management.exportCustomers({
+  format: 'csv',
+  date_from: '2024-01-01'
+});
+```
+
+**Parameters:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `format` | `string` | Export format: `'csv'` or `'json'` |
+| `date_from` | `string` | Filter customers created after this date |
+| `date_to` | `string` | Filter customers created before this date |
+
+---
+
+### `management.getWebhookData(params?)`
+
+Retrieve webhook event data.
+
+```typescript
+const events = await sdk.management.getWebhookData({
+  type: 'order_created',
+  limit: 100
+});
+```
+
+---
+
+## Pages API
+
+The `sdk.pages` namespace retrieves static pages configured in the store (e.g., About Us, Terms, Privacy Policy).
+
+### `pages.getAll()`
+
+Get all published pages.
+
+```typescript
+const pages = await sdk.pages.getAll();
+```
+
+**Returns:** `Page[]`
+
+### `pages.getByUrl(url)`
+
+Get a specific page by its URL slug.
+
+```typescript
+const page = await sdk.pages.getByUrl('about-us');
+console.log(page.title);
+console.log(page.content); // HTML content
+```
+
+**Returns:** `Page`
+
+```typescript
+interface Page {
+  id: number;
+  title: string;
+  url: string;
+  content: string;
+  meta_title?: string;
+  meta_description?: string;
+  is_active: boolean;
+}
+```
+
+---
+
+## Components API
+
+The `sdk.components` namespace retrieves homepage components configured by the store owner (featured sections, promotional blocks, etc.).
+
+### `components.getAll()`
+
+Get all homepage components.
+
+```typescript
+const components = await sdk.components.getAll();
+```
+
+### `components.getById(id)`
+
+Get a specific component by ID.
+
+```typescript
+const component = await sdk.components.getById(5);
+```
+
+### `components.getProducts(id, params?)`
+
+Get the products associated with a component.
+
+```typescript
+const { data: products, pagination } = await sdk.components.getProducts(5, {
+  page: 1,
+  per_page: 12
+});
+```
+
+## Example: Server-side Analytics Dashboard
+
+```typescript
+// In a Next.js API route or server action
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+
+const sdk = createStorefrontSDK({
+  publicKey: process.env.RMZ_PUBLIC_KEY!,
+  secretKey: process.env.RMZ_SECRET_KEY!,
+});
+
+export async function GET() {
+  const [analytics, orders] = await Promise.all([
+    sdk.management.getAnalytics({
+      start_date: '2024-01-01',
+      end_date: '2024-12-31',
+      metrics: ['sales', 'revenue'],
+    }),
+    sdk.management.getOrders({ per_page: 10, status: 'completed' }),
+  ]);
+
+  return Response.json({ analytics, recentOrders: orders.data });
+}
+```

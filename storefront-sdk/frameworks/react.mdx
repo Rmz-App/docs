@@ -1,0 +1,180 @@
+---
+title: "React & Next.js"
+description: "Use the Storefront SDK with React and Next.js — hooks, SSR, API routes, and the official Next.js starter."
+---
+
+The SDK provides a built-in React hook and works seamlessly with Next.js for both client-side rendering and server-side rendering.
+
+<Card title="Next.js Starter Template" icon="github" href="https://github.com/Dokan-E-Commerce/rmz-storefront-nextjs">
+  Full example storefront built with Next.js, TypeScript, and the Storefront SDK.
+</Card>
+
+## React Hook
+
+The SDK exports a `useStorefrontSDK` hook that memoizes the SDK instance:
+
+```tsx
+import { useStorefrontSDK } from 'rmz-storefront-sdk';
+import { useEffect, useState } from 'react';
+
+function ProductList() {
+  const sdk = useStorefrontSDK({
+    apiUrl: process.env.NEXT_PUBLIC_RMZ_API_URL!,
+    publicKey: process.env.NEXT_PUBLIC_RMZ_PUBLIC_KEY!,
+  });
+
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    async function loadProducts() {
+      const { data } = await sdk.products.getAll({ per_page: 12 });
+      setProducts(data);
+    }
+    loadProducts();
+  }, [sdk]);
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {products.map(product => (
+        <div key={product.id}>
+          <h3>{product.name}</h3>
+          <p>{product.price} {product.currency}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Next.js Server-side Rendering
+
+Use the SDK in `getServerSideProps` or server components with HMAC authentication:
+
+```typescript
+// lib/sdk.ts
+import { createStorefrontSDK } from 'rmz-storefront-sdk';
+
+// Client-side SDK (no secret key)
+export const clientSDK = createStorefrontSDK({
+  apiUrl: process.env.NEXT_PUBLIC_RMZ_API_URL || 'https://front.rmz.gg/api',
+  publicKey: process.env.NEXT_PUBLIC_RMZ_PUBLIC_KEY!,
+});
+
+// Server-side SDK (with HMAC)
+export const serverSDK = createStorefrontSDK({
+  apiUrl: process.env.RMZ_API_URL || 'https://front.rmz.gg/api',
+  publicKey: process.env.RMZ_PUBLIC_KEY!,
+  secretKey: process.env.RMZ_SECRET_KEY!,
+  environment: 'production',
+});
+```
+
+### Pages Router (getServerSideProps)
+
+```typescript
+// pages/index.tsx
+import { serverSDK } from '@/lib/sdk';
+
+export async function getServerSideProps() {
+  const [store, { data: products }] = await Promise.all([
+    serverSDK.store.get(),
+    serverSDK.products.getFeatured(8),
+  ]);
+
+  return {
+    props: { store, products },
+  };
+}
+
+export default function Home({ store, products }) {
+  return (
+    <div>
+      <h1>{store.name}</h1>
+      {products.map(p => <ProductCard key={p.id} product={p} />)}
+    </div>
+  );
+}
+```
+
+### App Router (Server Components)
+
+```typescript
+// app/page.tsx
+import { serverSDK } from '@/lib/sdk';
+
+export default async function HomePage() {
+  const store = await serverSDK.store.get();
+  const featured = await serverSDK.products.getFeatured(8);
+
+  return (
+    <div>
+      <h1>{store.name}</h1>
+      {featured.map(p => <ProductCard key={p.id} product={p} />)}
+    </div>
+  );
+}
+```
+
+### API Routes
+
+```typescript
+// app/api/cart/route.ts
+import { serverSDK } from '@/lib/sdk';
+import { NextRequest } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  const { productId, quantity } = await request.json();
+  const cart = await serverSDK.cart.addItem(productId, quantity);
+  return Response.json(cart);
+}
+```
+
+## Cart Context Example
+
+A common pattern is to wrap cart state in a React context:
+
+```tsx
+// contexts/CartContext.tsx
+import { createContext, useContext, useState, useCallback } from 'react';
+import { clientSDK } from '@/lib/sdk';
+
+const CartContext = createContext(null);
+
+export function CartProvider({ children }) {
+  const [cart, setCart] = useState(null);
+  const [count, setCount] = useState(0);
+
+  const addItem = useCallback(async (productId, quantity = 1) => {
+    const updated = await clientSDK.cart.addItem(productId, quantity);
+    setCart(updated);
+    setCount(updated.count);
+    return updated;
+  }, []);
+
+  const refresh = useCallback(async () => {
+    const current = await clientSDK.cart.get();
+    setCart(current);
+    setCount(current.count);
+  }, []);
+
+  return (
+    <CartContext.Provider value={{ cart, count, addItem, refresh }}>
+      {children}
+    </CartContext.Provider>
+  );
+}
+
+export const useCart = () => useContext(CartContext);
+```
+
+## Environment Variables
+
+```bash
+# .env.local
+NEXT_PUBLIC_RMZ_API_URL=https://front.rmz.gg/api
+NEXT_PUBLIC_RMZ_PUBLIC_KEY=pk_your_public_key
+
+RMZ_API_URL=https://front.rmz.gg/api
+RMZ_PUBLIC_KEY=pk_your_public_key
+RMZ_SECRET_KEY=sk_your_secret_key
+```

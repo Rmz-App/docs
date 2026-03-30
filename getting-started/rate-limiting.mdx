@@ -1,0 +1,80 @@
+---
+title: Rate Limiting
+description: Understand rate limits across all RMZ APIs.
+---
+
+# Rate Limiting
+
+All RMZ APIs enforce rate limits to ensure fair usage and platform stability. When you exceed a limit, you receive a `429 Too Many Requests` response.
+
+## Limits by API
+
+### Merchant API
+
+| Scope | Limit |
+|-------|-------|
+| All endpoints | 60 requests per minute per token |
+
+### Storefront API
+
+| Scope | Limit |
+|-------|-------|
+| General API calls | 60 requests per minute |
+| Authentication start (`POST /auth/start`) | 50 sessions per day per IP |
+| Phone authentication | 10 attempts per day per phone number |
+| OTP verification (`POST /auth/verify`) | 5 attempts per minute per IP |
+| OTP resend (`POST /auth/resend`) | 3 resends per 10 minutes |
+
+### License Verification API
+
+| Scope | Limit |
+|-------|-------|
+| All endpoints | 60 requests per minute per IP |
+
+## Handling Rate Limits
+
+When rate-limited, the API returns:
+
+```json
+{
+  "message": "Too Many Requests"
+}
+```
+
+**HTTP Status:** `429`
+
+### Best Practices
+
+1. **Implement exponential backoff** — wait 1s, then 2s, then 4s before retrying
+2. **Cache responses** — avoid re-fetching data that has not changed
+3. **Batch where possible** — use pagination instead of fetching one item at a time
+4. **Monitor your usage** — track 429 responses in your logs
+
+### Retry Example
+
+<CodeGroup>
+```javascript JavaScript
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    const response = await fetch(url, options);
+    if (response.status !== 429) return response;
+    const waitTime = Math.pow(2, i) * 1000;
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  throw new Error("Rate limit exceeded after retries");
+}
+```
+
+```python Python
+import time
+import requests
+
+def fetch_with_retry(url, headers, max_retries=3):
+    for i in range(max_retries):
+        response = requests.get(url, headers=headers)
+        if response.status_code != 429:
+            return response
+        time.sleep(2 ** i)
+    raise Exception("Rate limit exceeded after retries")
+```
+</CodeGroup>
