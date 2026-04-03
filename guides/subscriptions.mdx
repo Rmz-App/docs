@@ -1,0 +1,371 @@
+---
+title: "Subscription Integration"
+description: "End-to-end guide to integrating RMZ subscriptions into your application, including storefront purchases, SaaS billing, webhooks, and the customer portal."
+---
+
+This guide covers everything you need to integrate RMZ's subscription and billing system into your application. Whether you are building a storefront with recurring products or a SaaS platform that needs subscription management, this guide will walk you through the full flow.
+
+## Prerequisites
+
+- An RMZ store with an **RMZ+** subscription plan
+- At least one subscription product created in your store dashboard
+- API keys from **Dashboard > Settings > API Keys**
+- A webhook endpoint to receive subscription events
+
+---
+
+## Overview
+
+RMZ subscriptions support:
+
+- **Multiple billing cycles**: monthly, quarterly, semi-annual, annual, biennial, and more
+- **Free trials**: optional trial periods before the first charge
+- **Auto-renewal**: automatic charging via saved payment cards
+- **Dunning**: retry logic for failed payments (up to 3 attempts over 7 days)
+- **Plan changes**: upgrades (immediate with proration) and downgrades (at next period)
+- **Customer portal**: hosted self-service portal for subscription management
+
+### Subscription Lifecycle
+
+```
+created → trialing → active → renewed (repeats)
+                         ↓
+                     past_due → expired
+                         ↓
+                       active (if payment recovered)
+
+active/trialing → canceled (immediate) or cancel_at_period_end → expired
+```
+
+### Status Reference
+
+| Status | Access Granted | Description |
+|--------|:-------------:|-------------|
+| `trialing` | Yes | Customer is in a free trial period |
+| `active` | Yes | Subscription is active and paid |
+| `past_due` | Yes | Payment failed, retries in progress (grace period) |
+| `canceled` | No | Subscription was canceled immediately |
+| `expired` | No | Subscription period ended or all retries exhausted |
+
+---
+
+## Storefront Flow
+
+If you are building a custom storefront (headless), customers purchase subscription products through the standard checkout flow.
+
+### 1. Display Subscription Products
+
+Fetch products with type `subscription` and display their variants:
+
+```javascript
+const { data: product } = await sdk.products.getBySlug('pro-plan');
+
+// Each variant represents a billing cycle
+product.subscription_variants.forEach(variant => {
+  console.log(`${variant.durationText}: ${variant.price} SAR`);
+  // e.g., "شهر: 49 SAR", "سنه: 399 SAR"
+});
+```
+
+### 2. Add to Cart and Checkout
+
+```javascript
+// Add the subscription variant to the cart
+await sdk.cart.addItem(product.id, 1, { variant_id: selectedVariant.id });
+
+// Create checkout
+const checkout = await sdk.checkout.create({
+  payment_method: 'card'
+});
+
+// Redirect to payment
+window.location.href = checkout.redirect_url;
+```
+
+### 3. After Purchase
+
+Once payment completes, a subscription is automatically created. Listen for the `subscription.created` webhook to provision access in your system.
+
+### 4. View Customer Subscriptions
+
+Authenticated customers can view their subscriptions:
+
+```javascript
+const { data: subscriptions } = await sdk.orders.getSubscriptions();
+
+subscriptions.forEach(sub => {
+  console.log(`Status: ${sub.status}`);
+  console.log(`Renews: ${sub.current_period_end}`);
+  console.log(`Auto-renew: ${sub.auto_renew}`);
+});
+```
+
+---
+
+## SaaS Integration Flow
+
+If you are building a SaaS product and want to use RMZ for subscription billing, use the Merchant API to create checkout sessions programmatically.
+
+### 1. Create a Checkout Session
+
+When a user wants to subscribe in your application, create a checkout session on your server:
+
+```javascript
+// Your server-side code
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.RMZ_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      product_id: 102,
+      variant_id: 15,
+      customer: {
+        country_code: user.countryCode,
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      },
+      metadata: {
+        external_user_id: user.id,
+        plan: "pro"
+      },
+      success_url: "https://yourapp.com/subscription/success",
+      cancel_url: "https://yourapp.com/pricing"
+    })
+  }
+);
+
+const { data } = await response.json();
+// Redirect user to data.checkout_url
+```
+
+### 2. Handle the Webhook
+
+Set up a webhook to handle subscription events:
+
+```javascript
+app.post("/webhooks/rmz", async (req, res) => {
+  const { event, event_id, data } = req.body;
+  const subscription = data.subscription;
+  const metadata = subscription.metadata; // Your custom data from checkout session
+
+  switch (event) {
+    case "subscription.created":
+      // Use metadata.external_user_id to link RMZ subscription to your user
+      await provisionAccess(metadata.external_user_id, subscription.id);
+      break;
+
+    case "subscription.renewed":
+      await extendAccess(metadata.external_user_id, subscription.current_period_end);
+      break;
+
+    case "subscription.canceled":
+    case "subscription.expired":
+      await revokeAccess(metadata.external_user_id);
+      break;
+
+    case "subscription.past_due":
+      await showPaymentWarning(metadata.external_user_id);
+      break;
+  }
+
+  res.status(200).json({ received: true });
+});
+```
+
+### 3. Manage Subscriptions via API
+
+Cancel, extend, or query subscriptions from your server:
+
+```javascript
+// Cancel at end of period
+await fetch(`https://merchant-api.rmz.gg/shawarma/subscriptions/${subId}/cancel`, {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${process.env.RMZ_API_KEY}`,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ effective: "end_of_period" })
+});
+
+// Extend by 7 days (courtesy)
+await fetch(`https://merchant-api.rmz.gg/shawarma/subscriptions/${subId}/extend`, {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${process.env.RMZ_API_KEY}`,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ days: 7 })
+});
+```
+
+---
+
+## Webhook Events Reference
+
+Subscribe to these events to keep your system in sync:
+
+| Event | When to Use |
+|-------|-------------|
+| `subscription.created` | Provision access for new subscribers |
+| `subscription.activated` | Upgrade trial users to full access |
+| `subscription.renewed` | Confirm recurring payment and extend access |
+| `subscription.renewal_failed` | Alert customer about payment issues |
+| `subscription.past_due` | Show warning banners, send dunning emails |
+| `subscription.expired` | Revoke access |
+| `subscription.canceled` | Trigger retention flows |
+| `subscription.updated` | Handle plan changes and extensions |
+
+See the full [Webhook Events](/webhooks/events) documentation for payload examples.
+
+---
+
+## Customer Billing Portal
+
+The billing portal is a hosted page where customers can self-manage their subscriptions. You do not need to build any subscription management UI.
+
+### Create a Portal Session
+
+```javascript
+// Server-side: generate a portal URL for the customer
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/portal-sessions",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.RMZ_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      customer: {
+        country_code: "966",
+        phone: "512345678"
+      },
+      return_url: "https://yourapp.com/account"
+    })
+  }
+);
+
+const { data } = await response.json();
+// Redirect customer to data.url
+```
+
+### Portal Capabilities
+
+In the portal, customers can:
+
+- View all their subscriptions and status
+- Cancel a subscription (end of period or immediately)
+- Change subscription plan (upgrade or downgrade)
+- Update their payment method
+- View payment history and invoices
+
+See the [Portal Sessions API](/merchant-api/portal-sessions/create-portal-session) documentation for details.
+
+---
+
+## Auto-Renewal and Dunning
+
+When a customer has a saved payment card and `auto_renew` is enabled, RMZ automatically charges the card before the subscription period ends.
+
+### Renewal Process
+
+1. **3 days before period end**: RMZ attempts to charge the saved card
+2. **If payment succeeds**: Subscription is renewed, `subscription.renewed` webhook fires
+3. **If payment fails**: Subscription enters `past_due`, retry schedule begins
+
+### Retry Schedule
+
+| Attempt | Timing | Webhook Event |
+|---------|--------|---------------|
+| 1st | Immediately (at period end) | `subscription.renewal_failed` |
+| 2nd | 3 days after first failure | `subscription.renewal_failed` |
+| 3rd | 7 days after first failure | `subscription.renewal_failed` |
+| Final | After 3rd failure | `subscription.expired` |
+
+During the retry period, the subscription remains in `past_due` status. Access is still granted during this grace period to avoid disrupting the customer.
+
+<Tip>
+  Use the `subscription.renewal_failed` webhook to send the customer an email asking them to update their payment method. Include a link to the billing portal.
+</Tip>
+
+---
+
+## Managing Subscriptions via API
+
+### List Subscriptions
+
+```bash
+curl -X GET "https://merchant-api.rmz.gg/shawarma/subscriptions" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+### Get Subscription Details
+
+```bash
+curl -X GET "https://merchant-api.rmz.gg/shawarma/subscriptions/501" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+### Cancel a Subscription
+
+```bash
+curl -X POST "https://merchant-api.rmz.gg/shawarma/subscriptions/501/cancel" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"effective": "end_of_period"}'
+```
+
+### Extend a Subscription
+
+```bash
+curl -X POST "https://merchant-api.rmz.gg/shawarma/subscriptions/501/extend" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"days": 7}'
+```
+
+See the full [Merchant API Subscriptions](/merchant-api/subscriptions/list-subscriptions) documentation for all available endpoints.
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use webhooks for state changes">
+    Never rely solely on API polling. Subscribe to webhook events and process them to keep your system in sync with subscription state.
+  </Card>
+  <Card title="Handle idempotency">
+    Your webhook handler may receive the same event more than once. Use the `X-RMZ-REQUEST-ID` header to deduplicate.
+  </Card>
+  <Card title="Graceful degradation for past_due">
+    Do not immediately revoke access when a subscription enters `past_due`. The customer still has access during the retry period.
+  </Card>
+  <Card title="Use end_of_period cancellation">
+    Default to `end_of_period` cancellation to preserve the customer experience. Only use `immediate` when necessary (e.g., policy violations).
+  </Card>
+</CardGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Webhook Events" href="/webhooks/events">
+    Full list of subscription webhook events with payload examples.
+  </Card>
+  <Card title="Merchant API" href="/merchant-api/subscriptions/list-subscriptions">
+    Complete API reference for subscription management.
+  </Card>
+  <Card title="Billing Portal" href="/merchant-api/portal-sessions/create-portal-session">
+    Create portal sessions for customer self-service.
+  </Card>
+  <Card title="Webhook Integration Guide" href="/guides/webhook-integration">
+    Learn how to set up and verify webhooks.
+  </Card>
+</CardGroup>

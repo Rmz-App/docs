@@ -1,0 +1,271 @@
+---
+title: Create Checkout Session
+description: Create a checkout session for a customer to subscribe to a product.
+---
+
+# Create Checkout Session
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
+  <code>/subscriptions/checkout-sessions</code>
+</div>
+
+Creates a hosted checkout session that redirects the customer to complete their subscription purchase. This is the primary way for SaaS integrations to create subscriptions programmatically.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+## Request Body
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `product_id` | integer | Yes | The subscription product ID |
+| `variant_id` | integer | Yes | The subscription variant ID (determines duration and price) |
+| `customer.id` | integer | Conditional | Existing customer ID. If provided, other customer fields are ignored. |
+| `customer.country_code` | string | Conditional | Customer's country dial code (e.g. `"966"` for Saudi Arabia, `"971"` for UAE). Required if `customer.id` is not provided. |
+| `customer.phone` | string | Conditional | Customer's phone number, 5-15 digits (e.g. `"512345678"`). Required if `customer.id` is not provided. |
+| `customer.firstName` | string | Conditional | Customer's first name. Required if `customer.id` is not provided. |
+| `customer.lastName` | string | Conditional | Customer's last name. Required if `customer.id` is not provided. |
+| `customer.email` | string | Conditional | Customer's email address. Required if `customer.id` is not provided. |
+| `success_url` | string | Yes | URL to redirect to after successful payment |
+| `cancel_url` | string | Yes | URL to redirect to if the customer cancels |
+| `metadata` | object | No | Key-value pairs to attach to the subscription. Max 20 keys, values max 500 characters. Included in all webhook payloads and API responses. Use this to store external IDs from your system (e.g. your user ID, plan ID, etc). |
+
+<Info>
+  You must provide either `customer.id` (to reference an existing customer) **or** the full set of `customer.country_code`, `customer.phone`, `customer.firstName`, `customer.lastName`, and `customer.email` (to create or match a customer).
+</Info>
+
+## Example Request (New Customer)
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 102,
+    "variant_id": 15,
+    "customer": {
+      "country_code": "966",
+      "phone": "512345678",
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com"
+    },
+    "metadata": {
+      "external_user_id": "usr_abc123",
+      "plan": "pro"
+    },
+    "success_url": "https://yourapp.com/subscription/success",
+    "cancel_url": "https://yourapp.com/subscription/cancel"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer YOUR_API_TOKEN",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      product_id: 102,
+      variant_id: 15,
+      customer: {
+        country_code: "966",
+        phone: "512345678",
+        firstName: "Ahmed",
+        lastName: "Ali",
+        email: "ahmed@example.com"
+      },
+      success_url: "https://yourapp.com/subscription/success",
+      cancel_url: "https://yourapp.com/subscription/cancel"
+    })
+  }
+);
+const session = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions",
+    headers={
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+    },
+    json={
+        "product_id": 102,
+        "variant_id": 15,
+        "customer": {
+            "country_code": "966",
+            "phone": "512345678",
+            "firstName": "Ahmed",
+            "lastName": "Ali",
+            "email": "ahmed@example.com"
+        },
+        "success_url": "https://yourapp.com/subscription/success",
+        "cancel_url": "https://yourapp.com/subscription/cancel"
+    }
+)
+session = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "product_id" => 102,
+    "variant_id" => 15,
+    "customer" => [
+        "country_code" => "966",
+        "phone" => "512345678",
+        "firstName" => "Ahmed",
+        "email" => "ahmed@example.com"
+    ],
+    "success_url" => "https://yourapp.com/subscription/success",
+    "cancel_url" => "https://yourapp.com/subscription/cancel"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Example Request (Existing Customer)
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product_id": 102,
+    "variant_id": 15,
+    "customer": {
+      "id": 4501
+    },
+    "success_url": "https://yourapp.com/subscription/success",
+    "cancel_url": "https://yourapp.com/subscription/cancel"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer YOUR_API_TOKEN",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      product_id: 102,
+      variant_id: 15,
+      customer: { id: 4501 },
+      success_url: "https://yourapp.com/subscription/success",
+      cancel_url: "https://yourapp.com/subscription/cancel"
+    })
+  }
+);
+const session = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions",
+    headers={
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+    },
+    json={
+        "product_id": 102,
+        "variant_id": 15,
+        "customer": {"id": 4501},
+        "success_url": "https://yourapp.com/subscription/success",
+        "cancel_url": "https://yourapp.com/subscription/cancel"
+    }
+)
+session = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/subscriptions/checkout-sessions");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "product_id" => 102,
+    "variant_id" => 15,
+    "customer" => ["id" => 4501],
+    "success_url" => "https://yourapp.com/subscription/success",
+    "cancel_url" => "https://yourapp.com/subscription/cancel"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Success Response
+
+```json
+{
+  "message": null,
+  "data": {
+    "session_id": "cs_abc123def456",
+    "checkout_url": "https://billing.rmz.gg/checkout/01KNAE1283PNWZDNE5W2TNRY5J",
+    "expires_at": "2025-06-01T01:00:00.000000Z"
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_id` | string | Unique identifier for the checkout session |
+| `checkout_url` | string | URL to redirect the customer to for payment |
+| `expires_at` | string | ISO 8601 timestamp when the session expires (7 minutes) |
+
+## Flow
+
+1. Your server creates a checkout session via this endpoint
+2. Redirect the customer to the `checkout_url`
+3. The customer completes payment on the hosted checkout page
+4. On success, the customer is redirected to your `success_url`
+5. A `subscription.created` webhook is fired to your webhook endpoint
+
+<Tip>
+  Always listen for the `subscription.created` webhook to confirm the subscription was successfully created, rather than relying solely on the redirect to `success_url`.
+</Tip>
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `404` | Product or variant not found |
+| `422` | Validation error — missing or invalid parameters |

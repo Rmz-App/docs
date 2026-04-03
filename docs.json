@@ -31,6 +31,7 @@
               "guides/building-a-custom-storefront",
               "guides/embedding-checkout",
               "guides/webhook-integration",
+              "guides/subscriptions",
               "guides/license-integration"
             ]
           }
@@ -77,7 +78,16 @@
             "group": "Subscriptions",
             "pages": [
               "merchant-api/subscriptions/list-subscriptions",
-              "merchant-api/subscriptions/get-subscription"
+              "merchant-api/subscriptions/get-subscription",
+              "merchant-api/subscriptions/create-checkout-session",
+              "merchant-api/subscriptions/cancel-subscription",
+              "merchant-api/subscriptions/extend-subscription"
+            ]
+          },
+          {
+            "group": "Portal Sessions",
+            "pages": [
+              "merchant-api/portal-sessions/create-portal-session"
             ]
           }
         ]

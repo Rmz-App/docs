@@ -1,0 +1,248 @@
+---
+title: Create Portal Session
+description: Generate a customer billing portal session URL for subscription self-service.
+---
+
+# Create Portal Session
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
+  <code>/portal-sessions</code>
+</div>
+
+Creates a billing portal session for a customer. The portal allows customers to view their subscriptions, update payment methods, cancel subscriptions, and change plans — all without requiring you to build a subscription management UI.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Content-Type` | `application/json` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+## Request Body
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `customer.id` | integer | Conditional | Existing customer ID. If provided, other customer fields are ignored. |
+| `customer.country_code` | string | Conditional | Customer's country dial code (e.g. `"966"` for Saudi Arabia, `"971"` for UAE). Required if `customer.id` is not provided. |
+| `customer.phone` | string | Conditional | Customer's phone number, 5-15 digits (e.g. `"512345678"`). Required if `customer.id` is not provided. |
+| `return_url` | string | No | URL to redirect to when the customer exits the portal |
+| `expires_in` | integer | No | Session lifetime in seconds (300-86400, default: 3600) |
+
+<Info>
+  You must provide either `customer.id` (to reference an existing customer) **or** `customer.country_code` + `customer.phone` (to look up the customer by phone).
+</Info>
+
+## Example Request (By Phone)
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/portal-sessions" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": {
+      "country_code": "966",
+      "phone": "512345678"
+    },
+    "return_url": "https://yourapp.com/account"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/portal-sessions",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer YOUR_API_TOKEN",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      customer: {
+        country_code: "966",
+        phone: "512345678"
+      },
+      return_url: "https://yourapp.com/account"
+    })
+  }
+);
+const session = await response.json();
+// Redirect customer to session.data.url
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/portal-sessions",
+    headers={
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+    },
+    json={
+        "customer": {
+            "country_code": "966",
+            "phone": "512345678"
+        },
+        "return_url": "https://yourapp.com/account"
+    }
+)
+session = response.json()
+# Redirect customer to session["data"]["url"]
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/portal-sessions");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "customer" => [
+        "country_code" => "966",
+        "phone" => "512345678"
+    ],
+    "return_url" => "https://yourapp.com/account"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+// Redirect customer to $response["data"]["url"]
+```
+</CodeGroup>
+
+## Example Request (By Customer ID)
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/portal-sessions" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer": {
+      "id": 4501
+    },
+    "return_url": "https://yourapp.com/account"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/portal-sessions",
+  {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer YOUR_API_TOKEN",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      customer: { id: 4501 },
+      return_url: "https://yourapp.com/account"
+    })
+  }
+);
+const session = await response.json();
+// Redirect customer to session.data.url
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/portal-sessions",
+    headers={
+        "Authorization": "Bearer YOUR_API_TOKEN",
+        "Content-Type": "application/json"
+    },
+    json={
+        "customer": {"id": 4501},
+        "return_url": "https://yourapp.com/account"
+    }
+)
+session = response.json()
+# Redirect customer to session["data"]["url"]
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/portal-sessions");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN",
+    "Content-Type: application/json"
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+    "customer" => ["id" => 4501],
+    "return_url" => "https://yourapp.com/account"
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+// Redirect customer to $response["data"]["url"]
+```
+</CodeGroup>
+
+## Success Response
+
+```json
+{
+  "message": "Portal session created successfully",
+  "data": {
+    "url": "https://billing.rmz.gg/s/aB3xK9mP...",
+    "expires_at": "2025-06-01T01:00:00.000000Z"
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | string | URL to redirect the customer to (`https://billing.rmz.gg/s/{token}`) |
+| `expires_at` | string | ISO 8601 timestamp when the session expires (default: 1 hour, configurable via `expires_in`) |
+
+## Portal Capabilities
+
+The customer billing portal allows customers to:
+
+| Capability | Description |
+|------------|-------------|
+| **View subscriptions** | See all active, past due, and canceled subscriptions |
+| **Cancel subscription** | Cancel at end of period or immediately |
+| **Change plan** | Upgrade or downgrade to a different subscription variant |
+| **Update payment method** | Add or change the saved card for auto-renewal |
+| **View invoices** | See payment history and invoice details |
+
+## Authentication Flow
+
+The portal uses OTP (one-time password) verification to authenticate the customer:
+
+1. Your server creates a portal session via this endpoint
+2. Redirect the customer to the `url`
+3. The customer verifies their identity via OTP sent to their phone
+4. After verification, the customer can manage their subscriptions
+5. When done, the customer is redirected to your `return_url`
+
+<Warning>
+  Portal session URLs are single-use and expire based on the `expires_in` parameter (default: 1 hour). Generate a new session each time the customer needs to access the portal.
+</Warning>
+
+<Tip>
+  The portal is fully hosted by RMZ and styled to match your store theme. You do not need to build any subscription management UI on your end.
+</Tip>
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `404` | Customer not found |
+| `422` | Validation error — missing or invalid parameters |

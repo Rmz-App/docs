@@ -3,7 +3,7 @@ title: "Webhook Events"
 description: "All webhook event types available in RMZ and what triggers them."
 ---
 
-RMZ currently supports two webhook event types. Each webhook you create listens for a single event type.
+RMZ supports webhook event types for orders and subscriptions. Each webhook you create listens for a single event type.
 
 ## Available Events
 
@@ -11,6 +11,14 @@ RMZ currently supports two webhook event types. Each webhook you create listens 
 |-------|---------|
 | `order.created` | A new order is placed in your store (after successful payment or for free orders) |
 | `order.status.changed` | An order's status is updated (e.g., from pending to completed, or completed to cancelled) |
+| `subscription.created` | A new subscription is created for a customer |
+| `subscription.activated` | A subscription transitions from trialing to active |
+| `subscription.renewed` | A subscription is successfully renewed with payment |
+| `subscription.renewal_failed` | An auto-renewal payment attempt failed |
+| `subscription.past_due` | A subscription enters the past due state after a failed payment |
+| `subscription.expired` | A subscription has expired (terminal state) |
+| `subscription.canceled` | A subscription has been canceled |
+| `subscription.updated` | A subscription has been updated (variant change, extension, etc.) |
 
 ---
 
@@ -60,6 +68,347 @@ The `status` field in the payload corresponds to these values:
 
 ---
 
+## subscription.created
+
+Fired when a new subscription is created for a customer, either through a storefront purchase or via the Merchant API checkout session.
+
+**Common use cases:**
+- Provision access to a service or SaaS product
+- Send a welcome email to the new subscriber
+- Sync the subscription to your billing system
+- Log the event for analytics
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.created",
+  "event_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "active",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
+## subscription.activated
+
+Fired when a subscription transitions from `trialing` to `active`, typically after a successful first payment at the end of a trial period.
+
+**Common use cases:**
+- Upgrade the customer from trial to full access
+- Trigger a billing confirmation notification
+- Update your CRM with the activation date
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.activated",
+  "event_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "active",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-15T00:00:00.000000Z",
+      "current_period_end": "2025-07-15T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
+## subscription.renewed
+
+Fired when a subscription is successfully renewed with a payment charge.
+
+**Common use cases:**
+- Send a payment receipt to the customer
+- Log the renewal for accounting
+- Extend access in your external system
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.renewed",
+  "event_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "active",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-07-01T00:00:00.000000Z",
+      "current_period_end": "2025-08-01T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
+## subscription.renewal_failed
+
+Fired when an auto-renewal payment attempt fails. The subscription may be retried automatically.
+
+**Common use cases:**
+- Notify the customer to update their payment method
+- Send a dunning email sequence
+- Log the failure for monitoring
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.renewal_failed",
+  "event_id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "past_due",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
+## subscription.past_due
+
+Fired when a subscription enters the `past_due` state after the first failed payment attempt.
+
+**Common use cases:**
+- Trigger a dunning workflow
+- Display a warning banner in your application
+- Downgrade the customer to a limited access tier
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.past_due",
+  "event_id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "past_due",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
+## subscription.expired
+
+Fired when a subscription reaches its terminal expired state, either after all retry attempts are exhausted or when a non-renewing subscription period ends.
+
+**Common use cases:**
+- Revoke access to your service
+- Send a win-back email
+- Archive the subscription in your system
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.expired",
+  "event_id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "expired",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": false,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
+## subscription.canceled
+
+Fired when a subscription is canceled, either immediately or scheduled for end of period.
+
+**Common use cases:**
+- Log the cancellation reason
+- Trigger a retention offer
+- Schedule access revocation for end-of-period cancellations
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.canceled",
+  "event_id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "active",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": false,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+<Note>
+  When canceled with `end_of_period`, the subscription `status` remains `active` and `auto_renew` is `false` until the period ends. The subscription will transition to `expired` when the period ends.
+</Note>
+
+---
+
+## subscription.updated
+
+Fired when a subscription is modified, such as a variant change (upgrade/downgrade) or a courtesy extension.
+
+**Common use cases:**
+- Update access level in your system for upgrades
+- Schedule a downgrade for the next billing cycle
+- Log the change for auditing
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.updated",
+  "event_id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "active",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 20,
+        "price": 99,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
 ## Choosing the Right Event
 
 <CardGroup cols={2}>
@@ -69,10 +418,22 @@ The `status` field in the payload corresponds to these values:
   <Card title="order.status.changed">
     Use when you need to track order lifecycle — notify customers of updates, sync status changes, or trigger post-purchase workflows.
   </Card>
+  <Card title="subscription.created">
+    Use when you need to provision access for new subscribers or sync subscriptions to your system.
+  </Card>
+  <Card title="subscription.renewed">
+    Use when you need to confirm recurring payments, send receipts, or extend access in external systems.
+  </Card>
+  <Card title="subscription.canceled">
+    Use when you need to trigger retention flows or schedule access revocation.
+  </Card>
+  <Card title="subscription.expired">
+    Use when you need to revoke access or trigger win-back campaigns.
+  </Card>
 </CardGroup>
 
 <Note>
-  You can create multiple webhooks for the same event with different URLs. For example, one webhook sending `order.created` to your CRM and another sending it to a Slack channel.
+  You can create multiple webhooks for the same event with different URLs. For example, one webhook sending `subscription.renewed` to your billing system and another sending it to a Slack channel.
 </Note>
 
 <Warning>

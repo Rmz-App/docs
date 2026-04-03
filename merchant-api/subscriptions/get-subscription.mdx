@@ -73,56 +73,51 @@ $response = json_decode(curl_exec($ch), true);
   "message": null,
   "data": {
     "id": 501,
-    "store_id": 1,
-    "customer_id": 123,
-    "product_id": 102,
-    "order_id": 78901,
-    "order_product_item_id": 1001,
-    "duration": "annually",
-    "is_active": true,
+    "status": "active",
+    "starts_at": "2024-01-01",
+    "ends_at": "2024-12-31",
     "start_date": "2024-01-01",
     "end_date": "2024-12-31",
-    "created_at": "2024-01-01T00:00:00.000000Z",
-    "updated_at": "2024-01-01T00:00:00.000000Z",
-    "durationText": "سنه",
-    "daysLeft": 276,
+    "current_period_start": "2024-01-01T00:00:00.000000Z",
+    "current_period_end": "2024-12-31T00:00:00.000000Z",
+    "trial_ends_at": null,
+    "cancel_at_period_end": false,
+    "canceled_at": null,
+    "duration": "annually",
+    "order_id": 78901,
+    "auto_renew": true,
+    "price": {
+      "amount": 199.99,
+      "formatted": "١٩٩٫٩٩ ر.س",
+      "currency": "SAR"
+    },
+    "metadata": {
+      "external_user_id": "usr_abc123",
+      "plan": "pro"
+    },
     "product": {
       "id": 102,
       "name": "Pro Plan",
       "slug": "pro-plan",
       "type": "subscription"
     },
-    "customer": {
-      "id": 123,
-      "firstName": "Ahmed",
-      "lastName": "Ali",
-      "email": "ahmed@example.com",
-      "country_code": "966",
-      "phone": "501234567",
-      "is_banned": false
+    "variant": {
+      "id": 15,
+      "duration": "annually",
+      "duration_text": "سنه",
+      "price": 199.99
     },
-    "order": {
-      "id": 78901,
-      "store_id": 1,
-      "customer_id": 123,
-      "coupon_id": null,
-      "total": 199.99,
-      "checkout_id": 55001,
-      "current_status": 4,
-      "seen_at": null,
-      "order_review_notification_sent_at": null,
-      "tax_rate": null,
-      "tax_amount": null,
-      "prices_include_tax": false,
-      "tax_country_code": null,
-      "tax_registration_number": null,
-      "created_at": "2024-01-01T00:00:00.000000Z",
-      "updated_at": "2024-01-01T00:00:00.000000Z",
-      "human_format": {
-        "date_human": "منذ سنة",
-        "date_normal": "Mon, Jan 1, 2024 12:00 AM"
-      }
-    }
+    "payment_method": {
+      "last_four": "4242",
+      "scheme": "visa"
+    },
+    "scheduled_variant": null,
+    "features": null,
+    "is_active": true,
+    "is_expired": false,
+    "days_remaining": 276,
+    "created_at": "2024-01-01T00:00:00.000000Z",
+    "updated_at": "2024-01-01T00:00:00.000000Z"
   },
   "api": "rmz.shawarma",
   "timestamp": 1699999999
@@ -134,21 +129,24 @@ $response = json_decode(curl_exec($ch), true);
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | integer | Subscription ID |
-| `store_id` | integer | Store ID |
-| `customer_id` | integer | Customer ID |
-| `product_id` | integer | Product ID |
-| `order_id` | integer | Original order ID |
-| `order_product_item_id` | integer | Order item ID |
+| `status` | string | Current status: `trialing`, `active`, `past_due`, `canceled`, `expired` |
+| `current_period_start` | string | Start of current billing period (ISO 8601) |
+| `current_period_end` | string | End of current billing period (ISO 8601) |
+| `trial_ends_at` | string/null | When the trial ends (null if no trial) |
+| `cancel_at_period_end` | boolean | Whether the subscription will cancel at end of current period |
+| `canceled_at` | string/null | When cancellation was requested |
 | `duration` | string | Duration key: `monthly`, `quarterly`, `semiAnnual`, `annually`, `biennial`, `quinquennial`, `decennial` |
-| `is_active` | boolean | Whether the subscription is currently active |
-| `start_date` | string/null | Subscription start date (`null` if not yet activated) |
-| `end_date` | string/null | Subscription end date |
-| `durationText` | string | Arabic label for the duration (e.g., "شهر", "٣ اشهر", "سنه") |
-| `daysLeft` | integer | Number of days remaining (0 if expired or not started) |
+| `order_id` | integer | Original order ID |
+| `auto_renew` | boolean | Whether auto-renewal is active (has saved card and not canceling) |
+| `price` | object | The locked subscription price (set at creation, immune to variant price changes) |
+| `metadata` | object/null | Custom key-value pairs attached at checkout session creation |
 | `product` | object | The subscription product (id, name, slug, type) |
-| `customer` | object | The subscribing customer |
-| `customer.is_banned` | boolean | Whether the customer is banned |
-| `order` | object | The full original order object including `human_format` |
+| `variant` | object | Current subscription variant (id, duration, duration_text, price) |
+| `payment_method` | object/null | Saved card info (last_four, scheme) — only if auto-renew is active |
+| `scheduled_variant` | object/null | Pending variant change (applied at next renewal) |
+| `is_active` | boolean | Whether the subscription currently grants access |
+| `is_expired` | boolean | Whether the subscription has expired |
+| `days_remaining` | integer | Number of days remaining in current period |
 
 ## Error Responses
 
