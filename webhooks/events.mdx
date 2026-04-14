@@ -18,6 +18,9 @@ RMZ supports webhook event types for orders and subscriptions. Each webhook you 
 | `subscription.past_due` | A subscription enters the past due state after a failed payment |
 | `subscription.expired` | A subscription has expired (terminal state) |
 | `subscription.canceled` | A subscription has been canceled |
+| `subscription.paused` | A subscription has been paused (auto-renewal stops, access retained until period end) |
+| `subscription.unpaused` | A paused subscription has been resumed (period extended by remaining days) |
+| `subscription.resumed` | A canceled subscription has been resumed before the period ended |
 | `subscription.updated` | A subscription has been updated (variant change, extension, etc.) |
 
 ---
@@ -367,6 +370,136 @@ Fired when a subscription is canceled, either immediately or scheduled for end o
 
 ---
 
+## subscription.paused
+
+Fired when a subscription is paused by the customer or via the Merchant API. Auto-renewal is suspended, but access is retained until the period end.
+
+**Common use cases:**
+- Suspend provisioned resources or downgrade service level
+- Log the pause for analytics
+- Send a "we'll miss you" email
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.paused",
+  "event_id": "c9d0e1f2-a3b4-5678-cdef-789012345678",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "paused",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": false,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+<Note>
+  When a subscription is paused, `is_active` becomes `false` and auto-renewal stops. The remaining days at the time of pause are stored internally. When unpaused, the period is extended by those remaining days.
+</Note>
+
+---
+
+## subscription.unpaused
+
+Fired when a paused subscription is resumed. The subscription returns to `active` status and the billing period is extended by the number of days remaining when it was paused.
+
+**Common use cases:**
+- Re-provision access or restore service level
+- Resume billing in your external system
+- Send a "welcome back" notification
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.unpaused",
+  "event_id": "d0e1f2a3-b4c5-6789-defa-890123456789",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "active",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-20T00:00:00.000000Z",
+      "current_period_end": "2025-07-10T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
+## subscription.resumed
+
+Fired when a canceled subscription is resumed before the current period ends. The subscription returns to `active` status and auto-renewal is re-enabled.
+
+**Common use cases:**
+- Restore access that was scheduled for revocation
+- Update your CRM to reflect the reactivation
+- Cancel any scheduled access revocation
+
+**Payload example:**
+
+```json
+{
+  "event": "subscription.resumed",
+  "event_id": "e1f2a3b4-c5d6-7890-efab-901234567890",
+  "data": {
+    "subscription": {
+      "id": 501,
+      "status": "active",
+      "product_id": 102,
+      "product_name": "Pro Plan",
+      "variant": {
+        "id": 15,
+        "price": 49,
+        "duration": "monthly"
+      },
+      "duration": "monthly",
+      "current_period_start": "2025-06-01T00:00:00.000000Z",
+      "current_period_end": "2025-07-01T00:00:00.000000Z",
+      "auto_renew": true,
+      "customer": {
+        "id": 123,
+        "email": "ahmed@example.com",
+        "name": "Ahmed Ali"
+      }
+    }
+  }
+}
+```
+
+---
+
 ## subscription.updated
 
 Fired when a subscription is modified, such as a variant change (upgrade/downgrade) or a courtesy extension.
@@ -423,6 +556,9 @@ Fired when a subscription is modified, such as a variant change (upgrade/downgra
   </Card>
   <Card title="subscription.renewed">
     Use when you need to confirm recurring payments, send receipts, or extend access in external systems.
+  </Card>
+  <Card title="subscription.paused">
+    Use when you need to suspend provisioned resources or pause billing in your system.
   </Card>
   <Card title="subscription.canceled">
     Use when you need to trigger retention flows or schedule access revocation.

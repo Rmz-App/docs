@@ -129,7 +129,7 @@ $response = json_decode(curl_exec($ch), true);
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | integer | Subscription ID |
-| `status` | string | Current status: `trialing`, `active`, `past_due`, `canceled`, `expired` |
+| `status` | string | Current status: `trialing`, `active`, `past_due`, `paused`, `canceled`, `expired` |
 | `current_period_start` | string | Start of current billing period (ISO 8601) |
 | `current_period_end` | string | End of current billing period (ISO 8601) |
 | `trial_ends_at` | string/null | When the trial ends (null if no trial) |

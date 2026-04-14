@@ -1,0 +1,109 @@
+---
+title: Pause Subscription
+description: Pause a customer subscription to temporarily suspend auto-renewal.
+---
+
+# Pause Subscription
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
+  <code>/subscriptions/{"{id}"}/pause</code>
+</div>
+
+Pauses an active subscription. Auto-renewal is suspended and `is_active` becomes `false`. The remaining days in the current period are stored internally and will be restored when the subscription is unpaused.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | The subscription ID |
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/subscriptions/501/pause" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/subscriptions/501/pause",
+  {
+    method: "POST",
+    headers: { "Authorization": "Bearer YOUR_API_TOKEN" }
+  }
+);
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/subscriptions/501/pause",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"}
+)
+result = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/subscriptions/501/pause");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN"
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## Success Response
+
+```json
+{
+  "message": "Subscription paused successfully",
+  "data": {
+    "id": 501,
+    "status": "paused",
+    "is_active": false,
+    "current_period_end": "2025-07-01T00:00:00.000000Z"
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## Behavior
+
+- Only `active` subscriptions can be paused
+- Auto-renewal is suspended — no payment attempts will be made
+- `is_active` is set to `false`
+- The remaining days in the current period are stored in metadata
+- When unpaused, the period is extended by the stored remaining days
+- A `subscription.paused` webhook event is dispatched
+
+<Note>
+  Pausing a subscription does not refund any charges. It simply stops auto-renewal and marks the subscription as inactive. Use this for temporary holds, not cancellations.
+</Note>
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `404` | Subscription not found |
+| `422` | Only active subscriptions can be paused |
