@@ -22,6 +22,7 @@ RMZ supports webhook event types for orders and subscriptions. Each webhook you 
 | `subscription.unpaused` | A paused subscription has been resumed (period extended by remaining days) |
 | `subscription.resumed` | A canceled subscription has been resumed before the period ended |
 | `subscription.updated` | A subscription has been updated (variant change, extension, etc.) |
+| `customer.balance.updated` | A customer's store credit balance was changed (credit, debit, purchase, or refund) |
 
 ---
 
@@ -542,6 +543,42 @@ Fired when a subscription is modified, such as a variant change (upgrade/downgra
 
 ---
 
+## customer.balance.updated
+
+Fired when a customer's store credit balance is changed. This includes manual adjustments via the dashboard, API adjustments, purchase deductions, and refund credits.
+
+**Common use cases:**
+- Sync customer balance to an external loyalty or rewards system
+- Send a notification when credit is added to a customer's account
+- Log balance changes for accounting and auditing
+- Trigger workflows when a customer receives a refund credit
+
+**Payload example:**
+
+```json
+{
+  "event": "customer.balance.updated",
+  "event_id": "f2a3b4c5-d6e7-8901-abcd-012345678901",
+  "data": {
+    "customer_id": 123,
+    "transaction": {
+      "id": 456,
+      "type": "credit",
+      "amount": 25.00,
+      "balance_after": 75.00,
+      "source": "manual_adjustment",
+      "description": "Store credit for loyalty reward"
+    }
+  }
+}
+```
+
+<Note>
+  The `source` field indicates what triggered the balance change. Possible values: `manual_adjustment`, `purchase`, `refund`, `promotion`, `api`, `purchase_cancelled`, `reservation`.
+</Note>
+
+---
+
 ## Choosing the Right Event
 
 <CardGroup cols={2}>
@@ -565,6 +602,9 @@ Fired when a subscription is modified, such as a variant change (upgrade/downgra
   </Card>
   <Card title="subscription.expired">
     Use when you need to revoke access or trigger win-back campaigns.
+  </Card>
+  <Card title="customer.balance.updated">
+    Use when you need to sync balance changes to external loyalty, rewards, or accounting systems.
   </Card>
 </CardGroup>
 

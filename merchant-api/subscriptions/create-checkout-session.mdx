@@ -255,11 +255,16 @@ $response = json_decode(curl_exec($ch), true);
 1. Your server creates a checkout session via this endpoint
 2. Redirect the customer to the `checkout_url`
 3. The customer completes payment on the hosted checkout page
-4. On success, the customer is redirected to your `success_url`
+4. On success, the customer is redirected to your `success_url` with `?rmz-subscription-id={id}` appended as a query parameter
 5. A `subscription.created` webhook is fired to your webhook endpoint
 
+**Example redirect:**
+```
+https://yourapp.com/subscription/success?rmz-subscription-id=501
+```
+
 <Tip>
-  Always listen for the `subscription.created` webhook to confirm the subscription was successfully created, rather than relying solely on the redirect to `success_url`.
+  Use the `rmz-subscription-id` query parameter from the redirect to immediately look up the subscription. Always also listen for the `subscription.created` webhook to confirm the subscription was successfully created, as the redirect alone is not a guarantee of payment success.
 </Tip>
 
 ## Error Responses
