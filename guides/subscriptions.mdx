@@ -29,13 +29,32 @@ RMZ subscriptions support:
 
 ```
 created → trialing → active → renewed (repeats)
-                         ↓
-                     past_due → expired
-                         ↓
-                       active (if payment recovered)
+             │           ↓
+             │       past_due ──► expired
+             │           ↓
+             │         active (if payment recovered)
+             │           ↕
+             │         paused ──► active (on unpause/resume)
+             │
+             └──► canceled / expired (from trialing)
 
-active/trialing → canceled (immediate) or cancel_at_period_end → expired
+active / trialing / past_due / paused → canceled (immediate)
+                                      or cancel_at_period_end → expired
+
+canceled → active (resume, if the paid period has not yet ended)
+expired  → (terminal, no further transitions)
 ```
+
+Allowed state transitions (enforced server-side by `SubscriptionStatus::canTransitionTo()`):
+
+| From | Allowed Next States |
+|------|---------------------|
+| `trialing` | `active`, `past_due`, `canceled`, `expired` |
+| `active` | `past_due`, `paused`, `canceled`, `expired` |
+| `past_due` | `active`, `canceled`, `expired` |
+| `paused` | `active`, `canceled`, `expired` |
+| `canceled` | `active` (resume while period still valid) |
+| `expired` | — (terminal) |
 
 ### Status Reference
 
@@ -44,8 +63,9 @@ active/trialing → canceled (immediate) or cancel_at_period_end → expired
 | `trialing` | Yes | Customer is in a free trial period |
 | `active` | Yes | Subscription is active and paid |
 | `past_due` | Yes | Payment failed, retries in progress (grace period) |
-| `canceled` | No | Subscription was canceled immediately |
-| `expired` | No | Subscription period ended or all retries exhausted |
+| `paused` | No | Subscription is on hold ("freeze time"). Access is **suspended** while paused and auto-renewal is halted. At pause time, the days remaining in the current period are banked in `metadata.paused_remaining_days`. When the subscription is unpaused back to `active`, those banked days are added to the new period end, so the customer does not lose any paid time. |
+| `canceled` | No | Subscription was canceled immediately. Can be resumed back to `active` while the originally paid period has not yet ended. |
+| `expired` | No | Subscription period ended or all retries exhausted. Terminal state. |
 
 ---
 

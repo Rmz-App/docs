@@ -1,53 +1,53 @@
 ---
-title: Create Checkout Session
-description: Create a checkout session for a customer to subscribe to a product.
+title: إنشاء جلسة دفع
+description: إنشاء جلسة دفع لعميل للاشتراك في منتج.
 ---
 
-# Create Checkout Session
+# إنشاء جلسة دفع
 
 <div className="flex items-center gap-2 mb-4">
   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
   <code>/subscriptions/checkout-sessions</code>
 </div>
 
-Creates a hosted checkout session that redirects the customer to complete their subscription purchase. This is the primary way for SaaS integrations to create subscriptions programmatically.
+يُنشئ هذا المسار جلسة دفع مستضافة تُحوِّل العميل لإتمام عملية الاشتراك. هذه هي الطريقة الأساسية لتكاملات SaaS لإنشاء اشتراكات برمجيًا.
 
 <Snippet file="rmz-plus-required.mdx" />
 
-## Authentication
+## المصادقة
 
 <Snippet file="auth-bearer-header.mdx" />
 
-## Headers
+## الترويسات (Headers)
 
-| Header | Value | Required |
+| Header | القيمة | مطلوب |
 |--------|-------|----------|
-| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
-| `Content-Type` | `application/json` | Yes |
-| `Accept` | `application/json` | Recommended |
+| `Authorization` | `Bearer YOUR_API_TOKEN` | نعم |
+| `Content-Type` | `application/json` | نعم |
+| `Accept` | `application/json` | مستحسن |
 
-## Request Body
+## جسم الطلب (Request Body)
 
-| Parameter | Type | Required | Description |
+| Parameter | النوع | مطلوب | الوصف |
 |-----------|------|----------|-------------|
-| `product_id` | integer | Yes | The subscription product ID |
-| `variant_id` | integer | Yes | The subscription variant ID (determines duration and price) |
-| `customer.id` | integer | Conditional | Existing customer ID. If provided, other customer fields are ignored. |
-| `customer.country_code` | string | Conditional | Customer's country dial code (e.g. `"966"` for Saudi Arabia, `"971"` for UAE). Required if `customer.id` is not provided. |
-| `customer.phone` | string | Conditional | Customer's phone number, 5-15 digits (e.g. `"512345678"`). Required if `customer.id` is not provided. |
-| `customer.firstName` | string | Conditional | Customer's first name. Required if `customer.id` is not provided. |
-| `customer.lastName` | string | Conditional | Customer's last name. Required if `customer.id` is not provided. |
-| `customer.email` | string | Conditional | Customer's email address. Required if `customer.id` is not provided. |
-| `success_url` | string | Yes | URL to redirect to after successful payment |
-| `cancel_url` | string | Yes | URL to redirect to if the customer cancels |
-| `metadata` | object | No | Key-value pairs to attach to the subscription. Max 20 keys, values max 500 characters. Included in all webhook payloads and API responses. Use this for any additional per-subscription custom data you want echoed back. |
-| `external_customer_id` | string | No | Your system's stable user identifier (max 191 characters). Use this as the correlation key between RMZ subscriptions and your own user records. It is included in every subscription webhook payload at `data.subscription.external_customer_id` and in every subscription API response at `data.external_customer_id` (get, list, lookup, cancel, pause, unpause, extend). Can also be used as a query parameter on the `/subscriptions/lookup` endpoint. |
+| `product_id` | integer | نعم | معرّف منتج الاشتراك |
+| `variant_id` | integer | نعم | معرّف متغيّر الاشتراك (يحدد المدّة والسعر) |
+| `customer.id` | integer | مشروط | معرّف عميل موجود. إذا مُرِّر، يُتجاهَل بقية حقول العميل. |
+| `customer.country_code` | string | مشروط | مفتاح الاتصال الدولي للعميل (مثال: `"966"` للسعودية، `"971"` للإمارات). مطلوب إذا لم يُمرَّر `customer.id`. |
+| `customer.phone` | string | مشروط | رقم جوّال العميل من 5 إلى 15 رقمًا (مثال: `"512345678"`). مطلوب إذا لم يُمرَّر `customer.id`. |
+| `customer.firstName` | string | مشروط | الاسم الأول للعميل. مطلوب إذا لم يُمرَّر `customer.id`. |
+| `customer.lastName` | string | مشروط | اسم العائلة للعميل. مطلوب إذا لم يُمرَّر `customer.id`. |
+| `customer.email` | string | مشروط | البريد الإلكتروني للعميل. مطلوب إذا لم يُمرَّر `customer.id`. |
+| `success_url` | string | نعم | الرابط الذي يُحوَّل إليه العميل بعد نجاح الدفع |
+| `cancel_url` | string | نعم | الرابط الذي يُحوَّل إليه العميل عند إلغاء العملية |
+| `metadata` | object | لا | أزواج مفتاح/قيمة تُربط بالاشتراك. الحد الأقصى 20 مفتاحًا، وكل قيمة حتى 500 حرف. تُضمَّن في جميع حمولات الـ webhook واستجابات الـ API. استخدمها لأي بيانات مخصّصة إضافية تريد إرجاعها مع الاشتراك. |
+| `external_customer_id` | string | لا | معرّف المستخدم الثابت في نظامك (حتى 191 حرفًا). معرّف العميل الخارجي هو المفتاح الذي يربط اشتراكات RMZ بمستخدمي نظامك. يُرجَع في كل ردود الـ API وفي جميع الـ webhooks لهذا الاشتراك — في كل حمولة webhook تحت `data.subscription.external_customer_id`، وفي كل استجابة API للاشتراك تحت `data.external_customer_id` (عرض، قائمة، بحث، إلغاء، إيقاف مؤقت، استئناف، تمديد). كما يمكن استخدامه معاملًا في مسار `/subscriptions/lookup`. |
 
 <Info>
-  You must provide either `customer.id` (to reference an existing customer) **or** the full set of `customer.country_code`, `customer.phone`, `customer.firstName`, `customer.lastName`, and `customer.email` (to create or match a customer).
+  يجب تمرير إمّا `customer.id` (للإشارة إلى عميل موجود) **أو** المجموعة الكاملة من `customer.country_code` و`customer.phone` و`customer.firstName` و`customer.lastName` و`customer.email` (لإنشاء عميل جديد أو مطابقة عميل موجود).
 </Info>
 
-## Example Request (New Customer)
+## مثال على الطلب (عميل جديد)
 
 <CodeGroup>
 ```bash cURL
@@ -150,7 +150,7 @@ $response = json_decode(curl_exec($ch), true);
 ```
 </CodeGroup>
 
-## Example Request (Existing Customer)
+## مثال على الطلب (عميل موجود)
 
 <CodeGroup>
 ```bash cURL
@@ -228,7 +228,7 @@ $response = json_decode(curl_exec($ch), true);
 ```
 </CodeGroup>
 
-## Success Response
+## استجابة النجاح
 
 ```json
 {
@@ -243,35 +243,35 @@ $response = json_decode(curl_exec($ch), true);
 }
 ```
 
-## Response Fields
+## حقول الاستجابة
 
-| Field | Type | Description |
+| Field | النوع | الوصف |
 |-------|------|-------------|
-| `session_id` | string | Unique identifier for the checkout session |
-| `checkout_url` | string | URL to redirect the customer to for payment |
-| `expires_at` | string | ISO 8601 timestamp when the session expires (7 minutes) |
+| `session_id` | string | المعرّف الفريد لجلسة الدفع |
+| `checkout_url` | string | الرابط الذي يجب تحويل العميل إليه لإتمام الدفع |
+| `expires_at` | string | طابع زمني بصيغة ISO 8601 يوضح وقت انتهاء الجلسة (بعد 7 دقائق) |
 
-## Flow
+## سير العملية
 
-1. Your server creates a checkout session via this endpoint
-2. Redirect the customer to the `checkout_url`
-3. The customer completes payment on the hosted checkout page
-4. On success, the customer is redirected to your `success_url` with `?rmz-subscription-id={id}` appended as a query parameter
-5. A `subscription.created` webhook is fired to your webhook endpoint
+1. يُنشئ خادمك جلسة الدفع عبر هذا المسار
+2. تُحوِّل العميل إلى `checkout_url`
+3. يُتمّ العميل عملية الدفع على صفحة الدفع المستضافة
+4. عند النجاح، يُحوَّل العميل إلى `success_url` الذي حدّدته مع إضافة `?rmz-subscription-id={id}` كمعامل استعلام
+5. يُطلَق حدث الـ webhook `subscription.created` إلى نقطة الاستقبال لديك
 
-**Example redirect:**
+**مثال على التحويل:**
 ```
 https://yourapp.com/subscription/success?rmz-subscription-id=501
 ```
 
 <Tip>
-  Use the `rmz-subscription-id` query parameter from the redirect to immediately look up the subscription. Always also listen for the `subscription.created` webhook to confirm the subscription was successfully created, as the redirect alone is not a guarantee of payment success.
+  استخدم معامل الاستعلام `rmz-subscription-id` من عملية التحويل للاستعلام فورًا عن الاشتراك. مع ذلك، استمع دائمًا لحدث الـ webhook `subscription.created` للتأكد من نجاح إنشاء الاشتراك، لأن التحويل وحده لا يضمن نجاح عملية الدفع.
 </Tip>
 
-## Error Responses
+## استجابات الأخطاء
 
-| Code | Description |
+| Code | الوصف |
 |------|-------------|
-| `401` | Unauthorized — invalid or missing token |
-| `404` | Product or variant not found |
-| `422` | Validation error — missing or invalid parameters |
+| `401` | غير مصرّح — الرمز (token) غير صالح أو مفقود |
+| `404` | المنتج أو المتغيّر غير موجود |
+| `422` | خطأ في التحقق — معاملات مفقودة أو غير صحيحة |

@@ -97,12 +97,15 @@ $response = json_decode(curl_exec($ch), true);
 
 ## Success Response
 
+Returns the full subscription object in the standard `SubscriptionResource` shape — identical to [Get Subscription](./get-subscription), [List Subscriptions](./list-subscriptions), and [Lookup Subscriptions](./lookup-subscriptions). The fields most relevant to extension are shown below — see [Get Subscription](./get-subscription) for the complete field list.
+
 ```json
 {
   "message": "Subscription extended successfully",
   "data": {
     "id": 501,
     "status": "active",
+    "external_customer_id": "usr_abc123",
     "current_period_start": "2025-06-01T00:00:00.000000Z",
     "current_period_end": "2025-07-08T00:00:00.000000Z",
     "end_date": "2025-07-08T00:00:00.000000Z"
@@ -114,10 +117,13 @@ $response = json_decode(curl_exec($ch), true);
 
 ## Response Fields
 
+The response is the full `SubscriptionResource`. See [Get Subscription](./get-subscription) for the complete list. The fields most relevant to extension:
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | integer | Subscription ID |
 | `status` | string | Current subscription status |
+| `external_customer_id` | string/null | Stable identifier the merchant supplied at checkout creation. Use this to correlate RMZ subscriptions with your own user records. `null` if not supplied. |
 | `current_period_start` | string | Start of the current billing period |
 | `current_period_end` | string | New end of the current billing period (extended) |
 | `end_date` | string | Updated subscription end date |

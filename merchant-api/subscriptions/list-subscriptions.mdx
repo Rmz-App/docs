@@ -86,34 +86,48 @@ $response = json_decode(curl_exec($ch), true);
     "data": [
       {
         "id": 501,
-        "store_id": 1,
-        "customer_id": 123,
-        "product_id": 102,
+        "status": "active",
+        "external_customer_id": "usr_abc123",
+        "starts_at": "2026-01-01 00:00:00",
+        "ends_at": "2027-01-01 00:00:00",
+        "start_date": "2026-01-01 00:00:00",
+        "end_date": "2027-01-01 00:00:00",
+        "current_period_start": "2026-04-01 00:00:00",
+        "current_period_end": "2026-05-01 00:00:00",
+        "trial_ends_at": null,
+        "cancel_at_period_end": false,
+        "canceled_at": null,
+        "duration": "monthly",
         "order_id": 78901,
-        "order_product_item_id": 1001,
-        "duration": "annually",
-        "is_active": true,
-        "start_date": "2024-01-01",
-        "end_date": "2024-12-31",
-        "created_at": "2024-01-01T00:00:00.000000Z",
-        "updated_at": "2024-01-01T00:00:00.000000Z",
-        "durationText": "سنه",
-        "daysLeft": 276,
-        "customer": {
-          "id": 123,
-          "firstName": "Ahmed",
-          "lastName": "Ali",
-          "email": "ahmed@example.com",
-          "country_code": "966",
-          "phone": "501234567",
-          "is_banned": false
+        "auto_renew": true,
+        "price": {
+          "amount": 99.00,
+          "formatted": "99.00 ر.س",
+          "currency": "SAR"
         },
         "product": {
           "id": 102,
           "name": "Pro Plan",
           "slug": "pro-plan",
           "type": "subscription"
-        }
+        },
+        "variant": {
+          "id": 305,
+          "duration": "monthly",
+          "duration_text": "شهر",
+          "price": 99.00
+        },
+        "payment_method": {
+          "last_four": "4242",
+          "scheme": "visa"
+        },
+        "metadata": null,
+        "features": null,
+        "is_active": true,
+        "is_expired": false,
+        "days_remaining": 255,
+        "created_at": "2026-01-01T00:00:00.000000Z",
+        "updated_at": "2026-04-01T00:00:00.000000Z"
       }
     ],
     "first_page_url": "https://merchant-api.rmz.gg/shawarma/subscriptions?page=1",
@@ -128,6 +142,33 @@ $response = json_decode(curl_exec($ch), true);
   "timestamp": 1699999999
 }
 ```
+
+## Duration Values
+
+The `duration` field on each subscription is an enum representing the billing period of the subscription variant. Valid values:
+
+| Value | Meaning |
+|-------|---------|
+| `monthly` | 1 month |
+| `quarterly` | 3 months |
+| `semiAnnual` | 6 months |
+| `annually` | 1 year |
+| `biennial` | 2 years |
+| `quinquennial` | 5 years |
+| `decennial` | 10 years |
+
+## Status Values
+
+The `status` field reflects the current lifecycle state of the subscription. Possible values:
+
+| Value | Meaning |
+|-------|---------|
+| `trialing` | In a trial period; access is granted |
+| `active` | Fully paid and active; access is granted |
+| `past_due` | Renewal payment failed; may still be in grace period |
+| `paused` | Temporarily paused by the merchant or customer |
+| `canceled` | Canceled; may still have access until period end |
+| `expired` | Terminal state; access is no longer granted |
 
 ## Filter Examples
 

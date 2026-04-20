@@ -78,9 +78,12 @@
             "group": "Subscriptions",
             "pages": [
               "merchant-api/subscriptions/list-subscriptions",
+              "merchant-api/subscriptions/lookup-subscriptions",
               "merchant-api/subscriptions/get-subscription",
               "merchant-api/subscriptions/create-checkout-session",
               "merchant-api/subscriptions/cancel-subscription",
+              "merchant-api/subscriptions/pause-subscription",
+              "merchant-api/subscriptions/unpause-subscription",
               "merchant-api/subscriptions/extend-subscription"
             ]
           },

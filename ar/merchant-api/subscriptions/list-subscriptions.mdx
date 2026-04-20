@@ -1,12 +1,193 @@
 ---
 title: "عرض الاشتراكات"
-description: "عرض قائمة الاشتراكات عبر واجهة التاجر"
+description: "استرجاع قائمة مُرقَّمة من اشتراكات العملاء مع إمكانية التصفية."
 ---
-
-<Note>
-هذه الصفحة قيد الترجمة. يمكنك قراءة النسخة الإنجليزية [هنا](/merchant-api/subscriptions/list-subscriptions).
-</Note>
 
 # عرض الاشتراكات
 
-قريبًا...
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-mono font-bold">GET</span>
+  <code>/subscriptions</code>
+</div>
+
+تُعيد هذه النقطة قائمةً مُرقَّمة باشتراكات العملاء الخاصة بالمتجر المُصادَق عليه. يمكنك التصفية حسب البريد الإلكتروني للعميل أو رقم هاتفه أو رمز دولته.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## المصادقة
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## الترويسات (Headers)
+
+| الترويسة | القيمة | مطلوبة |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | نعم |
+| `Accept` | `application/json` | مُستحسن |
+
+## معاملات الاستعلام (Query Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `page` | integer | لا | رقم الصفحة (الافتراضي: 1) |
+| `customerEmail` | string | لا | التصفية حسب البريد الإلكتروني للعميل |
+| `customerPhone` | string | لا | التصفية حسب رقم هاتف العميل |
+| `customerCountryCode` | string | لا | التصفية حسب رمز دولة العميل (مثل `966`) |
+
+## مثال على الطلب
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://merchant-api.rmz.gg/shawarma/subscriptions?customerEmail=ahmed@example.com" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  customerEmail: "ahmed@example.com"
+});
+
+const response = await fetch(
+  `https://merchant-api.rmz.gg/shawarma/subscriptions?${params}`,
+  { headers: { "Authorization": "Bearer YOUR_API_TOKEN" } }
+);
+const subscriptions = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://merchant-api.rmz.gg/shawarma/subscriptions",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"},
+    params={"customerEmail": "ahmed@example.com"}
+)
+subscriptions = response.json()
+```
+
+```php PHP
+$params = http_build_query(["customerEmail" => "ahmed@example.com"]);
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/subscriptions?{$params}");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN"
+]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## استجابة النجاح
+
+```json
+{
+  "message": null,
+  "data": {
+    "current_page": 1,
+    "data": [
+      {
+        "id": 501,
+        "status": "active",
+        "external_customer_id": "usr_abc123",
+        "starts_at": "2026-01-01 00:00:00",
+        "ends_at": "2027-01-01 00:00:00",
+        "start_date": "2026-01-01 00:00:00",
+        "end_date": "2027-01-01 00:00:00",
+        "current_period_start": "2026-04-01 00:00:00",
+        "current_period_end": "2026-05-01 00:00:00",
+        "trial_ends_at": null,
+        "cancel_at_period_end": false,
+        "canceled_at": null,
+        "duration": "monthly",
+        "order_id": 78901,
+        "auto_renew": true,
+        "price": {
+          "amount": 99.00,
+          "formatted": "99.00 ر.س",
+          "currency": "SAR"
+        },
+        "product": {
+          "id": 102,
+          "name": "Pro Plan",
+          "slug": "pro-plan",
+          "type": "subscription"
+        },
+        "variant": {
+          "id": 305,
+          "duration": "monthly",
+          "duration_text": "شهر",
+          "price": 99.00
+        },
+        "payment_method": {
+          "last_four": "4242",
+          "scheme": "visa"
+        },
+        "metadata": null,
+        "features": null,
+        "is_active": true,
+        "is_expired": false,
+        "days_remaining": 255,
+        "created_at": "2026-01-01T00:00:00.000000Z",
+        "updated_at": "2026-04-01T00:00:00.000000Z"
+      }
+    ],
+    "first_page_url": "https://merchant-api.rmz.gg/shawarma/subscriptions?page=1",
+    "from": 1,
+    "next_page_url": null,
+    "path": "https://merchant-api.rmz.gg/shawarma/subscriptions",
+    "per_page": 15,
+    "prev_page_url": null,
+    "to": 1
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## قيم المدة (Duration)
+
+يمثّل الحقل `duration` في كل اشتراك قيمةً مُعدَّدة (enum) تُعبّر عن فترة الفوترة لمتغيّر الاشتراك. القيم المُتاحة:
+
+| القيمة | المعنى |
+|-------|---------|
+| `monthly` | شهر واحد |
+| `quarterly` | 3 أشهر |
+| `semiAnnual` | 6 أشهر |
+| `annually` | سنة واحدة |
+| `biennial` | سنتان |
+| `quinquennial` | 5 سنوات |
+| `decennial` | 10 سنوات |
+
+## قيم الحالة (Status)
+
+يعكس الحقل `status` الحالة الحالية لدورة حياة الاشتراك. القيم المُحتملة:
+
+| القيمة | المعنى |
+|-------|---------|
+| `trialing` | خلال فترة تجريبية؛ الوصول مُتاح |
+| `active` | مدفوع بالكامل ونشِط؛ الوصول مُتاح |
+| `past_due` | فشل دفع التجديد؛ قد يكون ضمن فترة السماح |
+| `paused` | مُوقَف مؤقتًا من قِبَل التاجر أو العميل |
+| `canceled` | مُلغى؛ قد يبقى الوصول حتى نهاية الفترة الحالية |
+| `expired` | حالة نهائية؛ لا يُتاح الوصول |
+
+## أمثلة على التصفية
+
+### حسب هاتف العميل
+
+```bash
+curl -X GET "https://merchant-api.rmz.gg/shawarma/subscriptions?customerCountryCode=966&customerPhone=501234567" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+### جميع الاشتراكات (بدون تصفية)
+
+```bash
+curl -X GET "https://merchant-api.rmz.gg/shawarma/subscriptions?page=1" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+## استجابات الأخطاء
+
+| الرمز | الوصف |
+|------|-------------|
+| `401` | غير مُصرَّح — الرمز (token) غير صالح أو مفقود |

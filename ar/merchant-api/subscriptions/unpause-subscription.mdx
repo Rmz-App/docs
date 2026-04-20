@@ -1,0 +1,116 @@
+---
+title: "استئناف الاشتراك"
+description: "استئناف اشتراك متوقف مؤقتًا، مع إعادة الوصول وتمديد فترة الفوترة."
+---
+
+# استئناف الاشتراك
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
+  <code>/subscriptions/{"{id}"}/unpause</code>
+</div>
+
+يستأنف اشتراكًا موقوفًا مؤقتًا. يعود الاشتراك إلى حالة `active`، وتُمدَّد فترة الفوترة بعدد الأيام التي كانت متبقية عند إيقاف الاشتراك، بحيث لا يُفقد أي وقت مدفوع.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## المصادقة
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## الترويسات (Headers)
+
+| الترويسة | القيمة | مطلوبة |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | نعم |
+| `Accept` | `application/json` | مُستحسنة |
+
+## معاملات المسار (Path Parameters)
+
+| المعامل | النوع | مطلوب | الوصف |
+|-----------|------|----------|-------------|
+| `id` | integer | نعم | معرّف الاشتراك |
+
+## مثال طلب
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/subscriptions/501/unpause" \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  "https://merchant-api.rmz.gg/shawarma/subscriptions/501/unpause",
+  {
+    method: "POST",
+    headers: { "Authorization": "Bearer YOUR_API_TOKEN" }
+  }
+);
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://merchant-api.rmz.gg/shawarma/subscriptions/501/unpause",
+    headers={"Authorization": "Bearer YOUR_API_TOKEN"}
+)
+result = response.json()
+```
+
+```php PHP
+$ch = curl_init("https://merchant-api.rmz.gg/shawarma/subscriptions/501/unpause");
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "Authorization: Bearer YOUR_API_TOKEN"
+]);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+```
+</CodeGroup>
+
+## استجابة النجاح
+
+يُرجع كائن الاشتراك الكامل بالشكل القياسي `SubscriptionResource` — مطابق لكلٍّ من [عرض اشتراك](./get-subscription) و[قائمة الاشتراكات](./list-subscriptions) و[البحث عن الاشتراكات](./lookup-subscriptions). فيما يلي أكثر الحقول صلة بعملية الاستئناف — راجع [عرض اشتراك](./get-subscription) للاطلاع على قائمة الحقول الكاملة.
+
+```json
+{
+  "message": "Subscription unpaused successfully",
+  "data": {
+    "id": 501,
+    "status": "active",
+    "external_customer_id": "usr_abc123",
+    "is_active": true,
+    "current_period_start": "2025-06-20T00:00:00.000000Z",
+    "current_period_end": "2025-07-10T00:00:00.000000Z"
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+## السلوك
+
+- لا يمكن استئناف إلا الاشتراكات التي حالتها `paused`
+- تعود الحالة إلى `active` وتُضبط `is_active` على `true`
+- يُضبط `current_period_start` على الوقت الحالي
+- يُمدَّد `current_period_end` اعتبارًا من الآن بعدد الأيام المتبقية التي حُفظت وقت الإيقاف (حدّ أدنى يوم واحد)، بحيث لا يُفقد أي وقت مدفوع
+- يُستأنف التجديد التلقائي بشكل طبيعي عند نهاية الفترة الجديدة
+- يُرسَل حدث Webhook باسم `subscription.unpaused`
+
+## مثال على الخط الزمني
+
+1. الاشتراك نشط: من 1 يناير إلى 1 فبراير (31 يومًا)
+2. أُوقف مؤقتًا في 20 يناير (حُفظ 11 يومًا متبقية)
+3. استُؤنف في 25 يناير
+4. الفترة الجديدة: من 25 يناير إلى 5 فبراير (11 يومًا من تاريخ الاستئناف)
+
+## استجابات الأخطاء
+
+| الرمز | الوصف |
+|------|-------------|
+| `401` | غير مُصرّح — رمز الوصول غير صالح أو مفقود |
+| `404` | الاشتراك غير موجود |
+| `422` | لا يمكن استئناف إلا الاشتراكات الموقوفة مؤقتًا |

@@ -74,6 +74,7 @@ $response = json_decode(curl_exec($ch), true);
   "data": {
     "id": 501,
     "status": "active",
+    "external_customer_id": "usr_abc123",
     "starts_at": "2024-01-01",
     "ends_at": "2024-12-31",
     "start_date": "2024-01-01",
@@ -130,11 +131,15 @@ $response = json_decode(curl_exec($ch), true);
 |-------|------|-------------|
 | `id` | integer | Subscription ID |
 | `status` | string | Current status: `trialing`, `active`, `past_due`, `paused`, `canceled`, `expired` |
+| `external_customer_id` | string/null | Stable identifier the merchant supplied at checkout creation. Use this to correlate RMZ subscriptions with your own user records. `null` if not supplied. |
 | `current_period_start` | string | Start of current billing period (ISO 8601) |
 | `current_period_end` | string | End of current billing period (ISO 8601) |
 | `trial_ends_at` | string/null | When the trial ends (null if no trial) |
 | `cancel_at_period_end` | boolean | Whether the subscription will cancel at end of current period |
 | `canceled_at` | string/null | When cancellation was requested |
+| `paused_at` | string | ISO 8601 timestamp recording when the subscription was paused. Only present when `status` is `paused`. |
+| `paused_remaining_days` | integer | Number of days that were remaining in the current period at the moment of pause. When the subscription is unpaused, this many days are added to the new period end. Only present when `status` is `paused`. |
+| `next_retry_at` | string | ISO 8601 timestamp for when the next automatic retry charge will be attempted. Only present when `status` is `past_due`. |
 | `duration` | string | Duration key: `monthly`, `quarterly`, `semiAnnual`, `annually`, `biennial`, `quinquennial`, `decennial` |
 | `order_id` | integer | Original order ID |
 | `auto_renew` | boolean | Whether auto-renewal is active (has saved card and not canceling) |

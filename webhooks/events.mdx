@@ -23,6 +23,10 @@ RMZ supports webhook event types for orders and subscriptions. Each webhook you 
 | `subscription.resumed` | A canceled subscription has been resumed before the period ended |
 | `subscription.updated` | A subscription has been updated (variant change, extension, etc.) |
 
+<Note>
+  Every subscription webhook payload includes an `external_customer_id` field at `data.subscription.external_customer_id`. This is the identifier the merchant supplied when creating the checkout session — use it to correlate incoming webhooks back to your own user records. The value is `null` if it was not set at checkout, but the key is always present.
+</Note>
+
 ---
 
 ## order.created
@@ -91,6 +95,7 @@ Fired when a new subscription is created for a customer, either through a storef
     "subscription": {
       "id": 501,
       "status": "active",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -102,6 +107,9 @@ Fired when a new subscription is created for a customer, either through a storef
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -133,6 +141,7 @@ Fired when a subscription transitions from `trialing` to `active`, typically aft
     "subscription": {
       "id": 501,
       "status": "active",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -144,6 +153,9 @@ Fired when a subscription transitions from `trialing` to `active`, typically aft
       "current_period_start": "2025-06-15T00:00:00.000000Z",
       "current_period_end": "2025-07-15T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -175,6 +187,7 @@ Fired when a subscription is successfully renewed with a payment charge.
     "subscription": {
       "id": 501,
       "status": "active",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -186,6 +199,9 @@ Fired when a subscription is successfully renewed with a payment charge.
       "current_period_start": "2025-07-01T00:00:00.000000Z",
       "current_period_end": "2025-08-01T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -217,6 +233,7 @@ Fired when an auto-renewal payment attempt fails. The subscription may be retrie
     "subscription": {
       "id": 501,
       "status": "past_due",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -228,6 +245,9 @@ Fired when an auto-renewal payment attempt fails. The subscription may be retrie
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -259,6 +279,7 @@ Fired when a subscription enters the `past_due` state after the first failed pay
     "subscription": {
       "id": 501,
       "status": "past_due",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -270,6 +291,9 @@ Fired when a subscription enters the `past_due` state after the first failed pay
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -301,6 +325,7 @@ Fired when a subscription reaches its terminal expired state, either after all r
     "subscription": {
       "id": 501,
       "status": "expired",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -312,6 +337,9 @@ Fired when a subscription reaches its terminal expired state, either after all r
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": false,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -343,6 +371,7 @@ Fired when a subscription is canceled, either immediately or scheduled for end o
     "subscription": {
       "id": 501,
       "status": "active",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -354,6 +383,9 @@ Fired when a subscription is canceled, either immediately or scheduled for end o
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": false,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -389,6 +421,7 @@ Fired when a subscription is paused by the customer or via the Merchant API. Aut
     "subscription": {
       "id": 501,
       "status": "paused",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -400,6 +433,9 @@ Fired when a subscription is paused by the customer or via the Merchant API. Aut
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": false,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -435,6 +471,7 @@ Fired when a paused subscription is resumed. The subscription returns to `active
     "subscription": {
       "id": 501,
       "status": "active",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -446,6 +483,9 @@ Fired when a paused subscription is resumed. The subscription returns to `active
       "current_period_start": "2025-06-20T00:00:00.000000Z",
       "current_period_end": "2025-07-10T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -477,6 +517,7 @@ Fired when a canceled subscription is resumed before the current period ends. Th
     "subscription": {
       "id": 501,
       "status": "active",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -488,6 +529,9 @@ Fired when a canceled subscription is resumed before the current period ends. Th
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
@@ -519,6 +563,7 @@ Fired when a subscription is modified, such as a variant change (upgrade/downgra
     "subscription": {
       "id": 501,
       "status": "active",
+      "external_customer_id": "usr_abc123",
       "product_id": 102,
       "product_name": "Pro Plan",
       "variant": {
@@ -530,6 +575,9 @@ Fired when a subscription is modified, such as a variant change (upgrade/downgra
       "current_period_start": "2025-06-01T00:00:00.000000Z",
       "current_period_end": "2025-07-01T00:00:00.000000Z",
       "auto_renew": true,
+      "metadata": {
+        "external_user_id": "usr_abc123"
+      },
       "customer": {
         "id": 123,
         "email": "ahmed@example.com",
