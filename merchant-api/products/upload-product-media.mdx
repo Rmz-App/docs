@@ -1,0 +1,96 @@
+---
+title: Upload Product Media
+description: Upload a product image or digital file and get a media id to attach to a product.
+---
+
+# Upload Product Media
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
+  <code>/products/upload</code>
+</div>
+
+Uploads a file (product image, extra image, or digital file) and returns a media `id`. Pass that `id` to [Create Product](/merchant-api/products/create-product) / [Update Product](/merchant-api/products/update-product) as `image.file.response.id` (or inside `product_files[]` / `extra_images[]`).
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Content-Type` | `multipart/form-data` | Yes |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `type` | string | No | `image` (main, default), `extra_image`, or `file` (digital file) |
+
+## Body (multipart/form-data)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | Yes | For `image`/`extra_image`: jpg, jpeg, png, gif (max 10 MB). For `file`: jpg, mp4, jpeg, png, gif, pdf, zip, docx, txt (max ~117 MB) |
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/products/upload?type=image" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -F "file=@/path/to/product.jpg"
+```
+
+```javascript JavaScript
+const form = new FormData();
+form.append("file", fileInput.files[0]);
+
+const res = await fetch("https://merchant-api.rmz.gg/shawarma/products/upload?type=image", {
+  method: "POST",
+  headers: { "Authorization": "Bearer YOUR_API_TOKEN" },
+  body: form
+});
+const { data } = await res.json();
+const mediaId = data.id; // pass as image.file.response.id
+```
+</CodeGroup>
+
+## Success Response
+
+`200 OK`
+
+```json
+{
+  "message": null,
+  "data": {
+    "id": 9001,
+    "type": "main_product_image",
+    "name": "product.jpg",
+    "file_name": "a1b2c3....jpg",
+    "path": "products/images/",
+    "mime_type": "image/jpeg",
+    "size": 48213
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+Use `data.id` when creating or updating a product:
+
+```json
+{ "image": { "file": { "response": { "id": 9001 } } } }
+```
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `403` | Plan does not include the API feature |
+| `422` | Invalid file type or file too large |

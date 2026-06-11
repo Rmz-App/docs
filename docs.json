@@ -65,7 +65,10 @@
             "group": "Products",
             "pages": [
               "merchant-api/products/list-products",
-              "merchant-api/products/get-product"
+              "merchant-api/products/get-product",
+              "merchant-api/products/create-product",
+              "merchant-api/products/update-product",
+              "merchant-api/products/upload-product-media"
             ]
           },
           {

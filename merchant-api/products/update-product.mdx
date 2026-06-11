@@ -1,0 +1,113 @@
+---
+title: Update Product
+description: Update an existing product, including replacing its digital code inventory.
+---
+
+# Update Product
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm font-mono font-bold">PUT</span>
+  <code>/products/{id}</code>
+</div>
+
+Updates a product you own. All fields are optional except `slug`; only the fields you send are changed.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+| `Content-Type` | `application/json` | Yes |
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | integer | Yes | The product ID (must belong to your store) |
+
+## Body Parameters
+
+Same fields as [Create Product](/merchant-api/products/create-product), all optional except `slug`. Notable behavior:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `slug` | string | Required. Must remain unique within your store |
+| `image` | object | Optional. Same `{ file: { response: { id } } }` shape; omit to keep the current image |
+| `codes` | array | For `type: code`, **replaces the entire code set** — send all codes you want to keep plus any new ones. Codes already sold are preserved. |
+| `subscriptionVariants` | array | Synced: include `id` to update an existing variant, omit `id` to create, omit a variant entirely to delete it |
+| `benefits` | array | Benefit IDs to attach |
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "https://merchant-api.rmz.gg/shawarma/products/103" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Premium Key (v2)",
+    "slug": "premium-key",
+    "type": "code",
+    "price": 59.99,
+    "codes": [ { "code": "KEY-AAA-111" }, { "code": "KEY-CCC-333" } ]
+  }'
+```
+
+```javascript JavaScript
+const res = await fetch("https://merchant-api.rmz.gg/shawarma/products/103", {
+  method: "PUT",
+  headers: {
+    "Authorization": "Bearer YOUR_API_TOKEN",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    name: "Premium Key (v2)",
+    slug: "premium-key",
+    type: "code",
+    price: 59.99,
+    codes: [{ code: "KEY-AAA-111" }, { code: "KEY-CCC-333" }]
+  })
+});
+const product = await res.json();
+```
+</CodeGroup>
+
+## Success Response
+
+`200 OK`
+
+```json
+{
+  "message": "تم تحديث المنتج بنجاح",
+  "data": {
+    "id": 103,
+    "name": "Premium Key (v2)",
+    "slug": "premium-key",
+    "type": "code",
+    "price": 59.99,
+    "codes": [ { "id": 5001, "code": "KEY-AAA-111" }, { "id": 5003, "code": "KEY-CCC-333" } ]
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+<Warning>
+  For `code` products, `codes` **replaces** the full unsold code set on every update. To *add* codes, include the existing ones plus the new ones. To change only the stock quantity of non-code products, use the inventory endpoint instead.
+</Warning>
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `403` | Plan does not include the API feature, or `license` type requires a plan with license integration |
+| `404` | Product not found in your store |
+| `422` | Validation error (e.g. duplicate `slug`). The `data` object contains field errors. |

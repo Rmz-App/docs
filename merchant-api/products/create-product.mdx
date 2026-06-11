@@ -1,0 +1,126 @@
+---
+title: Create Product
+description: Create a new product in your store, including digital code inventory.
+---
+
+# Create Product
+
+<div className="flex items-center gap-2 mb-4">
+  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono font-bold">POST</span>
+  <code>/products</code>
+</div>
+
+Creates a product of any type (`product`, `code`, `service`, `subscription`, `license`, `course`). For digital-code products, the codes you supply are added to the product's inventory.
+
+<Snippet file="rmz-plus-required.mdx" />
+
+## Authentication
+
+<Snippet file="auth-bearer-header.mdx" />
+
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer YOUR_API_TOKEN` | Yes |
+| `Accept` | `application/json` | Recommended |
+| `Content-Type` | `application/json` | Yes |
+
+## Body Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Product name |
+| `type` | string | Yes | One of `product`, `code`, `service`, `subscription`, `license`, `course` |
+| `price` | number | Yes | Selling price |
+| `cost_price` | number | Yes | Your cost price |
+| `slug` | string | No | URL slug (auto-generated from `name` if omitted). Must be unique within your store |
+| `description` | string | No | Product description (HTML allowed; sanitized server-side) |
+| `status` | integer | No | `1` = active, other values per store settings |
+| `image` | object | Yes | Product image reference: `{ "file": { "response": { "id": <media_id> } } }` — obtain `media_id` from [Upload Product Media](/merchant-api/products/upload-product-media) |
+| `categories` | array | No | Array of category IDs belonging to your store |
+| `stock` | integer | No | Stock quantity (for non-code types) |
+| `discount_price` | number | No | Discounted price |
+| `discount_expiry` | date | No | Discount expiry (`YYYY-MM-DD`) |
+| `activation_info` | string | No | Post-purchase activation instructions (HTML allowed) |
+| `codes` | array | For `code` | Array of `{ "code": "..." }` added to inventory |
+| `subscriptionVariants` | array | For `subscription`/`license` | Plan variants: `{ duration, price, badge?, features?: [{ name }] }` |
+| `license_config` | object | No (license) | `{ lock_type, expiry_type, expiry_days, max_activations, e2ee }` |
+| `course` | object | For `course` | `{ instructor, level, sections: [{ title, modules: [{ title, type, ... }] }] }` |
+| `seo` | object | No | `{ meta_title, meta_description, ... }` |
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://merchant-api.rmz.gg/shawarma/products" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Premium Key",
+    "type": "code",
+    "price": 49.99,
+    "cost_price": 20,
+    "slug": "premium-key",
+    "description": "<p>A premium activation key.</p>",
+    "status": 1,
+    "image": { "file": { "response": { "id": 9001 } } },
+    "categories": [12],
+    "codes": [ { "code": "KEY-AAA-111" }, { "code": "KEY-BBB-222" } ]
+  }'
+```
+
+```javascript JavaScript
+const res = await fetch("https://merchant-api.rmz.gg/shawarma/products", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer YOUR_API_TOKEN",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    name: "Premium Key",
+    type: "code",
+    price: 49.99,
+    cost_price: 20,
+    image: { file: { response: { id: 9001 } } },
+    codes: [{ code: "KEY-AAA-111" }, { code: "KEY-BBB-222" }]
+  })
+});
+const product = await res.json();
+```
+</CodeGroup>
+
+## Success Response
+
+`201 Created`
+
+```json
+{
+  "message": "تم إنشاء المنتج بنجاح",
+  "data": {
+    "id": 103,
+    "name": "Premium Key",
+    "slug": "premium-key",
+    "type": "code",
+    "price": 49.99,
+    "codes": [ { "id": 5001, "code": "KEY-AAA-111" }, { "id": 5002, "code": "KEY-BBB-222" } ],
+    "image": { "id": 9001 },
+    "categories": [ { "id": 12 } ],
+    "subscriptionVariants": []
+  },
+  "api": "rmz.shawarma",
+  "timestamp": 1699999999
+}
+```
+
+<Note>
+  Upload the image first via [Upload Product Media](/merchant-api/products/upload-product-media) to get the `media_id`, then pass it as `image.file.response.id`.
+</Note>
+
+## Error Responses
+
+| Code | Description |
+|------|-------------|
+| `401` | Unauthorized — invalid or missing token |
+| `403` | Plan does not include the API feature, or `license` type requires a plan with license integration |
+| `422` | Validation error (e.g. missing `name`/`price`/`type`, invalid `type`, duplicate `slug`, category not in your store). The `data` object contains field errors. |
