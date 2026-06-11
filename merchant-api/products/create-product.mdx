@@ -1,6 +1,6 @@
 ---
 title: Create Product
-description: Create a new product in your store, including digital code inventory.
+description: Create a product of any type — digital codes, files, subscriptions, licenses, or courses.
 ---
 
 # Create Product
@@ -10,7 +10,7 @@ description: Create a new product in your store, including digital code inventor
   <code>/products</code>
 </div>
 
-Creates a product of any type (`product`, `code`, `service`, `subscription`, `license`, `course`). For digital-code products, the codes you supply are added to the product's inventory.
+Creates a product of any type (`product`, `code`, `service`, `subscription`, `license`, `course`). The API accepts the full product model — the same fields the dashboard uses — including media, custom fields, variants, course content, discounts, metadata, and SEO.
 
 <Snippet file="rmz-plus-required.mdx" />
 
@@ -28,31 +28,157 @@ Creates a product of any type (`product`, `code`, `service`, `subscription`, `li
 
 ## Body Parameters
 
+### Core
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `name` | string | Yes | Product name |
 | `type` | string | Yes | One of `product`, `code`, `service`, `subscription`, `license`, `course` |
 | `price` | number | Yes | Selling price |
 | `cost_price` | number | Yes | Your cost price |
-| `slug` | string | No | URL slug (auto-generated from `name` if omitted). Must be unique within your store |
-| `description` | string | No | Product description (HTML allowed; sanitized server-side) |
-| `status` | integer | No | `1` = active, other values per store settings |
-| `image` | object | Yes | Product image reference: `{ "file": { "response": { "id": <media_id> } } }` — obtain `media_id` from [Upload Product Media](/merchant-api/products/upload-product-media) |
-| `categories` | array | No | Array of category IDs belonging to your store |
-| `stock` | integer | No | Stock quantity (for non-code types) |
-| `discount_price` | number | No | Discounted price |
-| `discount_expiry` | date | No | Discount expiry (`YYYY-MM-DD`) |
-| `activation_info` | string | No | Post-purchase activation instructions (HTML allowed) |
-| `codes` | array | For `code` | Array of `{ "code": "..." }` added to inventory |
-| `subscriptionVariants` | array | For `subscription`/`license` | Plan variants: `{ duration, price, badge?, features?: [{ name }] }` |
-| `license_config` | object | No (license) | `{ lock_type, expiry_type, expiry_days, max_activations, e2ee }` |
-| `course` | object | For `course` | `{ instructor, level, sections: [{ title, modules: [{ title, type, ... }] }] }` |
-| `seo` | object | No | `{ meta_title, meta_description, ... }` |
+| `slug` | string | No | URL slug — auto-generated from `name` if omitted. Must be unique within your store |
+| `description` | string | No | Product description. HTML allowed (sanitized server-side) |
+| `marketing_title` | string | No | Optional marketing headline |
+| `activation_info` | string | No | Post-purchase activation instructions. HTML allowed (sanitized) |
+| `status` | integer | No | `1` = active |
+| `show_reviews` | boolean | No | Whether to show reviews on the product page |
+| `is_noticeable` | boolean | No | Highlight/feature flag |
 
-## Example Request
+### Pricing & inventory
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `discount_price` | number | No | Discounted price |
+| `discount_expiry` | date | No | Discount expiry, `YYYY-MM-DD` |
+| `stock` | integer | No | Stock quantity (non-`code` types) |
+| `min_qty` | number | No | Minimum order quantity |
+| `max_purchase_count` | integer | No | Max units one customer can buy |
+
+### Media
+
+Upload files first via [Upload Product Media](/merchant-api/products/upload-product-media) to get a media `id`, then reference it here.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `image.file.response.id` | integer | Yes | Main product image media id |
+| `image_ulid` | string | No | Optional client-side reference |
+| `product_files` | array | No | Digital files (`product`/`license` types): `[{ "file": { "response": { "id": <media_id> } } }]` |
+| `extra_images` | array | No | Additional gallery images: `[{ "file": { "response": { "id": <media_id> } } }]` |
+
+<Note>Media you reference must have been uploaded by your store. Unknown or foreign media ids return `404`.</Note>
+
+### Categories, benefits & custom fields
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `categories` | array | No | Array of category ids belonging to your store |
+| `benefits` | array | No | Array of benefit ids |
+| `fields` | array | No | Custom order fields — see shape below |
+
+```json
+"fields": [
+  {
+    "type": "select",
+    "name": "Region",
+    "placeholder": "Choose a region",
+    "required": true,
+    "options": [ { "name": "EU", "price": 0 }, { "name": "US", "price": 5 } ]
+  }
+]
+```
+
+### Digital codes (`type: code`)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `codes` | array | For `code` | Codes added to inventory: `[{ "code": "..." }]` |
+
+### Subscription / License variants (`type: subscription` or `license`)
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `subscriptionVariants` | array | For `subscription`/`license` | Plan variants — see shape below |
+
+```json
+"subscriptionVariants": [
+  {
+    "duration": 30,
+    "price": 19.99,
+    "badge": "Most popular",
+    "features": [ { "name": "Priority support", "description": "24/7" } ]
+  }
+]
+```
+
+### License configuration (`type: license`)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `license_config.lock_type` | string | `none`, `hwid`, or `ip` |
+| `license_config.prefix` | string | Up to 8 alphanumeric chars |
+| `license_config.expiry_type` | string | `lifetime` or `timed` |
+| `license_config.expiry_days` | integer | 1–3650 (for `timed`) |
+| `license_config.max_activations` | integer | 0–100 |
+| `license_config.e2ee` | boolean | Enables end-to-end encryption; an encryption key is generated automatically |
+
+### Subscription configuration (`type: subscription`)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `trial_days` | integer | 0–90 |
+| `cancel_behavior` | string | `end_of_period` or `immediate` |
+| `auto_renew_default` | boolean | Default auto-renew state |
+| `grace_period_days` | integer | 0–30 |
+
+### Course content (`type: course`)
+
+```json
+"course": {
+  "instructor": "Jane Doe",
+  "level": "beginner",
+  "sections": [
+    {
+      "title": "Getting started",
+      "description": "Intro",
+      "sort_index": 0,
+      "modules": [
+        { "title": "Welcome", "type": "media", "video_uri": "https://...", "sort_index": 0 },
+        { "title": "Notes", "type": "text", "content": "<p>...</p>", "sort_index": 1 }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `course.instructor` | string | Instructor name |
+| `course.level` | string | Course level |
+| `course.sections[].title` | string | Section title (required for course) |
+| `course.sections[].modules[].type` | string | `media` or `text` |
+| `course.sections[].modules[].video_uri` | string | Media URL (for `media` modules) |
+| `course.sections[].modules[].content` | string | HTML content (for `text` modules) |
+
+### Display metadata & SEO
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `metadata.display.show_discount_countdown` | boolean | Show a discount countdown |
+| `metadata.display.show_discount_savings` | boolean | Show savings amount |
+| `metadata.display.show_monthly_breakdown` | boolean | Show monthly price breakdown |
+| `seo.meta_title` | string | ≤ 70 chars |
+| `seo.meta_description` | string | ≤ 320 chars |
+| `seo.meta_keywords` | string | ≤ 255 chars |
+| `seo.og_title` | string | ≤ 70 chars |
+| `seo.og_description` | string | ≤ 320 chars |
+| `seo.canonical_url` | string (url) | ≤ 500 chars |
+| `seo.robots` | string | ≤ 50 chars |
+| `seo.extra_meta` | array | Additional meta entries |
+
+## Example Requests
 
 <CodeGroup>
-```bash cURL
+```bash Code product (cURL)
 curl -X POST "https://merchant-api.rmz.gg/shawarma/products" \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
@@ -61,32 +187,58 @@ curl -X POST "https://merchant-api.rmz.gg/shawarma/products" \
     "type": "code",
     "price": 49.99,
     "cost_price": 20,
-    "slug": "premium-key",
-    "description": "<p>A premium activation key.</p>",
-    "status": 1,
     "image": { "file": { "response": { "id": 9001 } } },
     "categories": [12],
     "codes": [ { "code": "KEY-AAA-111" }, { "code": "KEY-BBB-222" } ]
   }'
 ```
 
-```javascript JavaScript
-const res = await fetch("https://merchant-api.rmz.gg/shawarma/products", {
-  method: "POST",
-  headers: {
-    "Authorization": "Bearer YOUR_API_TOKEN",
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    name: "Premium Key",
-    type: "code",
-    price: 49.99,
-    cost_price: 20,
-    image: { file: { response: { id: 9001 } } },
-    codes: [{ code: "KEY-AAA-111" }, { code: "KEY-BBB-222" }]
-  })
-});
-const product = await res.json();
+```json Subscription (body)
+{
+  "name": "Pro Plan",
+  "type": "subscription",
+  "price": 19.99,
+  "cost_price": 0,
+  "image": { "file": { "response": { "id": 9001 } } },
+  "trial_days": 7,
+  "cancel_behavior": "end_of_period",
+  "auto_renew_default": true,
+  "subscriptionVariants": [
+    { "duration": 30, "price": 19.99, "badge": "Monthly", "features": [{ "name": "Priority support" }] },
+    { "duration": 365, "price": 199, "badge": "Yearly", "features": [] }
+  ],
+  "metadata": { "display": { "show_monthly_breakdown": true } }
+}
+```
+
+```json License (body)
+{
+  "name": "App License",
+  "type": "license",
+  "price": 99,
+  "cost_price": 10,
+  "image": { "file": { "response": { "id": 9001 } } },
+  "license_config": { "lock_type": "hwid", "expiry_type": "timed", "expiry_days": 365, "max_activations": 3, "e2ee": true },
+  "subscriptionVariants": [ { "duration": 365, "price": 99, "features": [] } ],
+  "product_files": [ { "file": { "response": { "id": 9002 } } } ]
+}
+```
+
+```json Course (body)
+{
+  "name": "Mastering X",
+  "type": "course",
+  "price": 49,
+  "cost_price": 0,
+  "image": { "file": { "response": { "id": 9001 } } },
+  "course": {
+    "instructor": "Jane Doe",
+    "level": "beginner",
+    "sections": [
+      { "title": "Intro", "modules": [ { "title": "Welcome", "type": "media", "video_uri": "https://..." } ] }
+    ]
+  }
+}
 ```
 </CodeGroup>
 
@@ -113,14 +265,11 @@ const product = await res.json();
 }
 ```
 
-<Note>
-  Upload the image first via [Upload Product Media](/merchant-api/products/upload-product-media) to get the `media_id`, then pass it as `image.file.response.id`.
-</Note>
-
 ## Error Responses
 
 | Code | Description |
 |------|-------------|
 | `401` | Unauthorized — invalid or missing token |
 | `403` | Plan does not include the API feature, or `license` type requires a plan with license integration |
-| `422` | Validation error (e.g. missing `name`/`price`/`type`, invalid `type`, duplicate `slug`, category not in your store). The `data` object contains field errors. |
+| `404` | A referenced media id (image / product_files / extra_images) does not belong to your store |
+| `422` | Validation error (missing `name`/`price`/`type`, invalid `type`, duplicate `slug`, category not in your store, etc.). The `data` object contains field errors. |

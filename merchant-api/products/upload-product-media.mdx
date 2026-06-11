@@ -81,10 +81,22 @@ const mediaId = data.id; // pass as image.file.response.id
 }
 ```
 
-Use `data.id` when creating or updating a product:
+## Where to use the returned id
+
+Map each upload `type` to the create/update field that references the returned `data.id`:
+
+| Upload `type` | Use in create/update as |
+|---------------|-------------------------|
+| `image` | `image.file.response.id` (main product image) |
+| `extra_image` | `extra_images[].file.response.id` (gallery) |
+| `file` | `product_files[].file.response.id` (digital file — `product`/`license` types) |
 
 ```json
-{ "image": { "file": { "response": { "id": 9001 } } } }
+{
+  "image": { "file": { "response": { "id": 9001 } } },
+  "extra_images": [ { "file": { "response": { "id": 9101 } } } ],
+  "product_files": [ { "file": { "response": { "id": 9002 } } } ]
+}
 ```
 
 ## Error Responses

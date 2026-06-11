@@ -1,6 +1,6 @@
 ---
 title: Update Product
-description: Update an existing product, including replacing its digital code inventory.
+description: Update any field of a product — codes, files, variants, course content, pricing, SEO.
 ---
 
 # Update Product
@@ -10,7 +10,7 @@ description: Update an existing product, including replacing its digital code in
   <code>/products/{id}</code>
 </div>
 
-Updates a product you own. All fields are optional except `slug`; only the fields you send are changed.
+Updates a product you own. Accepts the **same full field set** as [Create Product](/merchant-api/products/create-product); all fields are optional except `slug`. Only the fields you send are changed — except where a field is a managed collection (see [Sync & replace semantics](#sync--replace-semantics)).
 
 <Snippet file="rmz-plus-required.mdx" />
 
@@ -30,24 +30,37 @@ Updates a product you own. All fields are optional except `slug`; only the field
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | integer | Yes | The product ID (must belong to your store) |
+| `id` | integer | Yes | Product id (must belong to your store) |
 
 ## Body Parameters
 
-Same fields as [Create Product](/merchant-api/products/create-product), all optional except `slug`. Notable behavior:
+All fields from [Create Product](/merchant-api/products/create-product) are accepted and **optional except `slug`**:
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `slug` | string | Required. Must remain unique within your store |
-| `image` | object | Optional. Same `{ file: { response: { id } } }` shape; omit to keep the current image |
-| `codes` | array | For `type: code`, **replaces the entire code set** — send all codes you want to keep plus any new ones. Codes already sold are preserved. |
-| `subscriptionVariants` | array | Synced: include `id` to update an existing variant, omit `id` to create, omit a variant entirely to delete it |
-| `benefits` | array | Benefit IDs to attach |
+- **Core:** `name`, `slug`* (must remain unique in your store), `type`, `description`, `marketing_title`, `activation_info`, `status`, `show_reviews`, `is_noticeable`
+- **Pricing/inventory:** `price`, `cost_price`, `discount_price`, `discount_expiry`, `stock`, `min_qty`, `max_purchase_count`
+- **Media:** `image.file.response.id` (omit to keep current), `product_files[]`, `extra_images[]`
+- **Relations:** `categories[]`, `benefits[]`, `fields[]`
+- **Per type:** `codes[]` (code), `subscriptionVariants[]` (+ `license_config` / subscription config), `course` (sections/modules)
+- **Display/SEO:** `metadata.display.*`, `seo.*`
 
-## Example Request
+Refer to the [create reference](/merchant-api/products/create-product#body-parameters) for the exact shape of each object.
+
+## Sync & replace semantics
+
+| Field | Behavior on update |
+|-------|--------------------|
+| `codes` | **Replaces** the live (unsold) code set. To add, send the existing codes plus new ones. Sold codes are preserved. |
+| `subscriptionVariants` | **Synced by `id`**: include `id` to update a variant, omit `id` to create, omit a variant entirely to delete it. A `subscription`/`license` must keep **at least one** variant (an empty array is rejected). |
+| `subscriptionVariants[].features` | Synced by `id` within each variant. |
+| `course.sections` / `modules` | Synced by `id`; omitted sections/modules are deleted. |
+| `product_files` / `extra_images` | Synced; ids omitted from the list are detached/removed from the product. |
+| `image` | Omit to keep the current image; provide a new media id to replace it. |
+| `benefits` / `categories` | Replace the full set you send. |
+
+## Example Requests
 
 <CodeGroup>
-```bash cURL
+```bash Replace codes (cURL)
 curl -X PUT "https://merchant-api.rmz.gg/shawarma/products/103" \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
@@ -60,22 +73,28 @@ curl -X PUT "https://merchant-api.rmz.gg/shawarma/products/103" \
   }'
 ```
 
-```javascript JavaScript
-const res = await fetch("https://merchant-api.rmz.gg/shawarma/products/103", {
-  method: "PUT",
-  headers: {
-    "Authorization": "Bearer YOUR_API_TOKEN",
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    name: "Premium Key (v2)",
-    slug: "premium-key",
-    type: "code",
-    price: 59.99,
-    codes: [{ code: "KEY-AAA-111" }, { code: "KEY-CCC-333" }]
-  })
-});
-const product = await res.json();
+```json Update subscription variants (body)
+{
+  "name": "Pro Plan",
+  "slug": "pro-plan",
+  "type": "subscription",
+  "price": 19.99,
+  "subscriptionVariants": [
+    { "id": 5850, "duration": 30, "price": 24.99, "features": [] },
+    { "duration": 365, "price": 199, "badge": "Yearly", "features": [{ "name": "2 months free" }] }
+  ]
+}
+```
+
+```json Update discount + SEO + gallery (body)
+{
+  "name": "App License",
+  "slug": "app-license",
+  "type": "license",
+  "discount_price": 79,
+  "extra_images": [ { "file": { "response": { "id": 9101 } } } ],
+  "seo": { "meta_title": "App License", "meta_description": "Buy a license" }
+}
 ```
 </CodeGroup>
 
@@ -99,15 +118,11 @@ const product = await res.json();
 }
 ```
 
-<Warning>
-  For `code` products, `codes` **replaces** the full unsold code set on every update. To *add* codes, include the existing ones plus the new ones. To change only the stock quantity of non-code products, use the inventory endpoint instead.
-</Warning>
-
 ## Error Responses
 
 | Code | Description |
 |------|-------------|
 | `401` | Unauthorized — invalid or missing token |
 | `403` | Plan does not include the API feature, or `license` type requires a plan with license integration |
-| `404` | Product not found in your store |
-| `422` | Validation error (e.g. duplicate `slug`). The `data` object contains field errors. |
+| `404` | Product not found in your store, or a referenced media id is not yours |
+| `422` | Validation error (e.g. duplicate `slug`, empty `subscriptionVariants` for a subscription/license). The `data` object contains field errors. |
